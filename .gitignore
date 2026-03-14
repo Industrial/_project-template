@@ -16,6 +16,7 @@
 .devenv*
 .direnv
 .direnv
+.moon/cache/
 .drift/**/.backups/
 .drift/cache/
 .drift/call-graph/
