@@ -61,6 +61,76 @@ git submodule update --init --recursive
 
 ---
 
+## Cachix (with devenv and CI)
+
+[Cachix](https://cachix.org) is a Nix binary cache. It stores build results (e.g. devenv shell closure, Nix packages) so you and CI can **pull** instead of rebuilding. Optionally, CI can **push** new build results to the cache so the next run is fast.
+
+### In devenv.nix
+
+In `devenv.nix` the cache is configured as:
+
+```nix
+cachix = {
+  pull = ["project-template"];
+  push = "project-template";
+};
+```
+
+- **pull** — When you run `devenv shell` or any Nix command, Nix will try to fetch store paths from the `project-template` cache (if you’ve trusted it; see below). No account needed for pull.
+- **push** — When a build runs with push enabled and Cachix auth, new store paths can be uploaded to the `project-template` cache. Pushing is typically done only in CI (e.g. on the main branch).
+
+Replace `project-template` with your own cache name if you create one at [cachix.org](https://cachix.org).
+
+### Local use (pull only)
+
+1. **Trust the cache** so Nix uses it when building the dev shell:
+
+   ```bash
+   cachix use project-template
+   ```
+
+   (Use your cache name if different.) This adds the cache to your Nix config and lets `devenv shell` pull binaries instead of building everything.
+
+2. **Enter the shell as usual:** `devenv shell`. If the closure is already on the cache, it will download instead of build.
+
+You do **not** need a Cachix account or auth for pulling. For pushing (e.g. from CI) you need a Cachix auth token.
+
+### CI pipeline
+
+In GitHub Actions (or similar) you want to:
+
+1. **Use the cache on every run** (pull) so CI benefits from previous builds.
+2. **Push to the cache only on selected events** (e.g. push to `main`), so the cache stays up to date and you avoid push failures on PRs.
+
+Example pattern:
+
+1. **Install Nix** (e.g. `DeterminateSystems/nix-installer-action`).
+2. **Configure Cachix** with [cachix/cachix-action](https://github.com/cachix/cachix-action):
+   - `name`: your cache name (e.g. `project-template`).
+   - **Pull:** always enabled when `name` is set.
+   - **Push:** only when you want to update the cache. Pass the auth token only then and set `skipPush: true` otherwise, so the action doesn’t try to start the push daemon on PRs.
+
+   Example (conceptual):
+
+   ```yaml
+   env:
+     CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
+   steps:
+     - uses: cachix/cachix-action@v16
+       with:
+         name: project-template
+         authToken: ${{ github.ref == 'refs/heads/main' && secrets.CACHIX_AUTH_TOKEN }}
+         skipPush: ${{ github.ref != 'refs/heads/main' }}
+   ```
+
+   So: on `main`, push if the token is set; on PRs or other branches, only pull.
+
+3. **Install devenv** and run your pipeline (e.g. `devenv shell -- moon run :ci-format` and the rest of your checks).
+
+Add the Cachix auth token as a repository secret (`CACHIX_AUTH_TOKEN`) if you want CI to push to your cache. If you only want to pull (e.g. from a public cache), you can omit the token and always use `skipPush: true`.
+
+---
+
 ## Lifecycle: what happens when
 
 ### 1. Clone the repo
