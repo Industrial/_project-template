@@ -4,6 +4,23 @@ Rust + Bun/TypeScript workspace template with Nix (devenv), moon tasks, treefmt,
 
 ---
 
+## Clone (with submodules)
+
+This repo uses a git submodule at `.cursor/agency-agents`. Clone with submodules in one go:
+
+```bash
+git clone --recurse-submodules <repo-url>
+cd <repo>
+```
+
+If you already cloned without submodules, init and update them:
+
+```bash
+git submodule update --init --recursive
+```
+
+---
+
 ## Overview
 
 - **Runtimes:** Rust (stable), JavaScript/TypeScript (Bun).
