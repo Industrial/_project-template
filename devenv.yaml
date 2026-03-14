@@ -13,3 +13,5 @@ inputs:
     inputs:
       nixpkgs:
         follows: nixpkgs
+  rust-symphony:
+    url: github:Industrial/rust-symphony/v0.4.1

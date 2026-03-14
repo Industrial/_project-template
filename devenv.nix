@@ -75,6 +75,7 @@ in {
 
   # Development packages
   packages = with pkgs; [
+    inputs.rust-symphony.packages.${pkgs.system}.default
     inputs.nixpkgs-unstable.legacyPackages.${pkgs.system}.beads
     cachix
 
