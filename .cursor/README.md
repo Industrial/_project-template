@@ -1,8 +1,23 @@
 # Cursor setup
 
+## Rules vs skills: how the AI uses them
+
+- **Rules** (`.cursor/rules/*.mdc`): Cursor injects rules into the AI context in two ways:
+  - **Always-applied**: frontmatter `alwaysApply: true` (and optional `globs`) — these are always in context (e.g. `shell.mdc`, `beads.mdc`, `mcp-servers.mdc`). The AI must never ignore them.
+  - **Opt-in**: `alwaysApply: false` and empty `globs` — Cursor does *not* auto-inject these. They only apply when the user **@-mentions** the rule (e.g. `@code-reviewer`) or when a slash command tells the AI to **explicitly load** a matching rule (e.g. `/skill`).
+- **Skills** (`.cursor/skills/*/SKILL.md`): Listed in the agent’s “available skills”; the AI is expected to read and follow them when chosen (e.g. via `/skill`).
+
+**Getting the AI to use rules and pick the right one:** Use the **`/skill`** command. Its instructions tell the AI to:
+1. Always respect always-applied project rules (never override them).
+2. Consider *both* `.cursor/skills/` and `.cursor/rules/` when picking the best match — and to explicitly read the chosen `.mdc` when a rule fits the task.
+
+So “pick the right skill” with `/skill` now means “pick the right skill **or rule**” and to load the relevant rule file from `.cursor/rules/` when it matches. Agency-agents–generated `.mdc` files are opt-in by design; they become usable when the AI is instructed (via `/skill`) to consider and load them, or when you @-mention them (e.g. `@code-reviewer`).
+
 ## Agency agents (submodule)
 
 The [agency-agents](https://github.com/msitarzewski/agency-agents) repo is included as a git submodule at `.cursor/agency-agents`. It provides agent definitions that can be converted into Cursor rules.
+
+**Note:** The install script generates every agent as a `.mdc` with `alwaysApply: false` and `globs: ""`, so Cursor never auto-applies them. To use an agent, either reference it in the prompt (e.g. `@frontend-developer`) or use `/skill` so the AI considers and loads the matching rule from `.cursor/rules/`. To make a specific agent always-on or file-scoped, edit that rule’s frontmatter (e.g. set `alwaysApply: true` or `globs: "**/*.tsx"`).
 
 ### Fresh clone
 
