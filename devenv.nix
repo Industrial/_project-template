@@ -6,10 +6,10 @@
   # Moon from GitHub releases (x86_64-linux). See https://moonrepo.dev/docs/install
   moon = pkgs.stdenv.mkDerivation {
     pname = "moon-cli";
-    version = "2.0.4";
+    version = "2.3.3";
     src = pkgs.fetchurl {
-      url = "https://github.com/moonrepo/moon/releases/download/v2.0.4/moon_cli-x86_64-unknown-linux-gnu.tar.xz";
-      sha256 = "0n7w3pmnwaxk0cy63ms97g609z696698a4qdrssnsa7cs8wgxxc8";
+      url = "https://github.com/moonrepo/moon/releases/download/v2.3.3/moon_cli-x86_64-unknown-linux-gnu.tar.xz";
+      sha256 = "19y47x4dh2dkvzx0nfzjcw97qvwiidkh0dimza6da4ivjdywfa66";
     };
     nativeBuildInputs = [pkgs.autoPatchelfHook];
     buildInputs = [pkgs.stdenv.cc.cc.lib];
@@ -69,10 +69,10 @@ in {
     enable = true;
   };
 
-  cachix = {
-    pull = ["project-template"];
-    push = "project-template";
-  };
+  # cachix = {
+  #   pull = ["project-template"];
+  #   push = "project-template";
+  # };
 
   # Languages
   languages = {
@@ -127,8 +127,8 @@ in {
 
   # Development packages
   packages = with pkgs; [
-    inputs.rust-symphony.packages.${pkgs.system}.default
-    inputs.nixpkgs-unstable.legacyPackages.${pkgs.system}.beads
+    inputs.nixpkgs-unstable.legacyPackages.${pkgs.stdenv.hostPlatform.system}.beads
+    inputs.definitively.packages.${pkgs.stdenv.hostPlatform.system}.definitively
     cachix
 
     clippy
@@ -136,7 +136,6 @@ in {
     rustc
 
     direnv
-    prek
 
     alejandra
 
@@ -168,7 +167,7 @@ in {
     vulnix
     yamlfmt
 
-    # Cursor hooks (format-after-edit, enforce-devenv) + postgres MCP wrapper
+    # jq — JSON CLI for shell hooks and automation scripts
     jq
     # Native libs for uv-installed wheels (Serena / transitive deps) on NixOS
     zlib
@@ -176,29 +175,28 @@ in {
   ];
 
   scripts = {
-    prek-install = {
-      exec = ''
-        prek install -q --overwrite
-      '';
-    };
-
     moon-sync = {
       exec = ''
         moon sync
       '';
     };
 
-    # Pre-push: run full check via moon (used by prek hook)
+    # Pre-commit: definitively fix loop (:ci-format → :test; LLM retries until green; local only)
+    pre-commit = {
+      exec = ''
+        moon run :format :check :lint :test
+      '';
+    };
+
+    # Pre-push: definitively fix loop (:ci-format → :build → :coverage → :audit; LLM retries until green; local only)
     pre-push = {
       exec = ''
-        export MOON_TOOLCHAIN_FORCE_GLOBALS=rust
         moon run :format :check :lint :build :test :audit :check-docs
       '';
     };
   };
 
   enterShell = ''
-    prek-install
     moon-sync
 
     # uv sync installs Serena into `.devenv/state/venv/bin`; devenv does not prepend by default.
@@ -207,4 +205,39 @@ in {
     mkdir -p "$HOME/.cache/sccache"
     chmod 755 "$HOME/.cache/sccache" 2>/dev/null || true
   '';
+
+  git-hooks = {
+    package = pkgs.prek;
+
+    default_stages = [
+      "pre-push"
+      "commit-msg"
+    ];
+
+    hooks = {
+      commitizen = {
+        enable = true;
+      };
+
+      pre-commit = {
+        enable = true;
+        name = "pre-commit";
+        entry = "pre-commit";
+        stages = ["pre-commit"];
+        pass_filenames = false;
+        always_run = true;
+        language = "system";
+      };
+
+      pre-push = {
+        enable = true;
+        name = "pre-push";
+        entry = "pre-push";
+        stages = ["pre-push"];
+        pass_filenames = false;
+        always_run = true;
+        language = "system";
+      };
+    };
+  };
 }

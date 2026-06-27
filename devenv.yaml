@@ -1,17 +1,28 @@
 inputs:
+  nixpkgs:
+    url: github:cachix/devenv-nixpkgs/rolling
+  nixpkgs-unstable:
+    url: github:nixos/nixpkgs/nixos-unstable
+  definitively:
+    url: github:Industrial/definitively/definitively-v0.4.1
+    flake: true
+    inputs:
+      nixpkgs:
+        follows: nixpkgs
+      nixpkgs-unstable:
+        follows: nixpkgs-unstable
+  git-hooks:
+    url: github:cachix/git-hooks.nix
+    inputs:
+      nixpkgs:
+        follows: nixpkgs
   fenix:
     url: github:nix-community/fenix
     inputs:
       nixpkgs:
         follows: nixpkgs
-  nixpkgs:
-    url: github:cachix/devenv-nixpkgs/rolling
-  nixpkgs-unstable:
-    url: github:nixos/nixpkgs/nixos-unstable
   rust-overlay:
     url: github:oxalica/rust-overlay
     inputs:
       nixpkgs:
         follows: nixpkgs
-  rust-symphony:
-    url: github:Industrial/rust-symphony/v0.4.1
