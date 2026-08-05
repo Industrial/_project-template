@@ -11,23 +11,19 @@ rows:
   - signal: diff-intersects-sensitive-security
     derived_class: critical
     description: >-
-      Diff intersects sensitive_paths.security set
-      (auth/**, secrets/**, permissions/**, payments/**)
+      Diff intersects sensitive_paths.security set (auth/**, secrets/**, permissions/**, payments/**)
   - signal: diff-modifies-dependency-manifests
     derived_class: high
     description: >-
-      Diff modifies dependency manifests
-      (package.json, bun.lock, Cargo.toml, requirements.txt, etc.)
+      Diff modifies dependency manifests (package.json, bun.lock, Cargo.toml, requirements.txt, etc.)
   - signal: diff-modifies-migrations
     derived_class: high
     description: >-
-      Diff includes database migration files
-      (paths matching policies/migration_paths)
+      Diff includes database migration files (paths matching policies/migration_paths)
   - signal: diff-modifies-ci-workflows
     derived_class: high
     description: >-
-      Diff modifies CI workflow files
-      (.github/workflows/**, .circleci/**, .gitlab-ci.yml)
+      Diff modifies CI workflow files (.github/workflows/**, .circleci/**, .gitlab-ci.yml)
   - signal: diff-modifies-policy-files
     derived_class: high
     description: >-
@@ -35,13 +31,11 @@ rows:
   - signal: diff-modifies-build-config
     derived_class: medium
     description: >-
-      Diff modifies build configuration
-      (tsconfig.json, bunfig.toml, vite.config.*, etc.)
+      Diff modifies build configuration (tsconfig.json, bunfig.toml, vite.config.*, etc.)
   - signal: diff-source-only
     derived_class: medium
     description: >-
-      Any source code change not matched by the above rows
-      (default for source changes)
+      Any source code change not matched by the above rows (default for source changes)
   - signal: diff-docs-only
     derived_class: low
     description: >-

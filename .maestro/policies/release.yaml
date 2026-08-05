@@ -7,5 +7,5 @@
 kind: release
 id: release-policy-default
 version: "1"
-require_signed_commits: false     # Tighten at L8 when signing is enforced repo-wide
+require_signed_commits: false # Tighten at L8 when signing is enforced repo-wide
 require_proof_map_complete: false # Tighten at L8 when proof maps are required

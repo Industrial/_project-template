@@ -83,6 +83,8 @@ priority = 4
 [formatter.yaml]
 command = "yamlfmt"
 includes = ["*.{yml,yaml}"]
+# Loco configs are Tera templates (`{{ get_env(...) }}`), not plain YAML.
+excludes = ["config/**"]
 priority = 5
 
 [formatter.toml]

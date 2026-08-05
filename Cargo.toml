@@ -1,9 +1,37 @@
 [workspace]
 resolver = "2"
-members = ["crates/app"]
+members = [
+  "crates/web",
+  "crates/migration",
+  "crates/domain-core",
+  "crates/domain-workspace",
+  "crates/domain-page",
+  "crates/domain-block",
+  "crates/domain-share",
+  "crates/domain-comment",
+]
+default-members = ["crates/web"]
 
-# Single version and shared metadata for all workspace crates (inherit with version.workspace = true).
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
 license = "CC-BY-SA-4.0"
+publish = false
+
+[workspace.dependencies]
+loco-rs = { version = "1.0" }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1" }
+thiserror = { version = "2" }
+uuid = { version = "1.6", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+async-trait = { version = "0.1" }
+validator = { version = "0.20" }
+
+domain-core = { path = "crates/domain-core" }
+domain-workspace = { path = "crates/domain-workspace" }
+domain-page = { path = "crates/domain-page" }
+domain-block = { path = "crates/domain-block" }
+domain-share = { path = "crates/domain-share" }
+domain-comment = { path = "crates/domain-comment" }
+migration = { path = "crates/migration" }

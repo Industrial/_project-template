@@ -1,0 +1,32 @@
+{
+	"name": "test-loco-webapp-frontend",
+	"private": true,
+	"version": "0.0.0",
+	"type": "module",
+	"scripts": {
+		"dev": "node server",
+		"build": "npm run build:client && npm run build:server",
+		"build:client": "vite build --outDir dist/client",
+		"build:server": "vite build --ssr src/entry-server.tsx --outDir dist/server",
+		"preview": "cross-env NODE_ENV=production node server",
+		"spa": "vite"
+	},
+	"dependencies": {
+		"@tanstack/react-query": "^5",
+		"compression": "^1.8.1",
+		"express": "^5.2.1",
+		"http-proxy-middleware": "^3",
+		"react": "^19",
+		"react-dom": "^19",
+		"react-router": "^8",
+		"sirv": "^3.0.2"
+	},
+	"devDependencies": {
+		"@types/react": "^19",
+		"@types/react-dom": "^19",
+		"@vitejs/plugin-react": "latest",
+		"cross-env": "^10",
+		"typescript": "^5",
+		"vite": "latest"
+	}
+}

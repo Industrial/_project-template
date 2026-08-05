@@ -36,7 +36,6 @@
 .idea
 .idea/
 .pre-commit-config.yaml
-.pre-commit-config.yaml
 .vscode
 .vscode/
 /.roam/

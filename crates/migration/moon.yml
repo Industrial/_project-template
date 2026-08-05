@@ -1,0 +1,194 @@
+# https://moonrepo.dev/docs/config/project
+language: 'rust'
+layer: 'library'
+tasks:
+  check:
+    description: 'cargo check -p migration'
+    deps: ['test-loco-webapp:format', '^:check']
+    command:
+      - cargo
+      - check
+      - -p
+      - migration
+      - --all-targets
+      - --all-features
+    inputs:
+      - 'Cargo.toml'
+      - 'src/**/*.rs'
+      - 'tests/**/*.rs'
+    options:
+      cache: true
+      outputStyle: buffer-only-failure
+  clippy:
+    description: 'cargo clippy -D warnings -p migration'
+    deps: ['test-loco-webapp:format', '^:clippy', '~:check']
+    command:
+      - cargo
+      - clippy
+      - -p
+      - migration
+      - --all-targets
+      - --all-features
+      - --
+      - -D
+      - warnings
+    inputs:
+      - 'Cargo.toml'
+      - 'src/**/*.rs'
+      - 'tests/**/*.rs'
+    options:
+      cache: true
+      outputStyle: buffer-only-failure
+  lint:
+    description: 'Lint gate (clippy)'
+    deps: ['test-loco-webapp:format', '^:lint', '~:clippy']
+    command: bash
+    args: ['-c', ':']
+    inputs:
+      - 'Cargo.toml'
+      - 'src/**/*.rs'
+      - 'tests/**/*.rs'
+      - 'examples/**/*.rs'
+    options:
+      cache: true
+      outputStyle: buffer-only-failure
+  test:
+    description: 'cargo nextest -p migration'
+    deps: ['test-loco-webapp:format', '^:test', '~:lint']
+    command:
+      - cargo
+      - nextest
+      - run
+      - -p
+      - migration
+    inputs:
+      - 'Cargo.toml'
+      - 'src/**/*.rs'
+      - 'tests/**/*.rs'
+    options:
+      cache: true
+      outputStyle: buffer-only-failure
+  coverage:
+    description: 'cargo llvm-cov nextest -p migration (95% lines/regions/functions)'
+    deps: ['test-loco-webapp:format', '~:test']
+    command:
+      - cargo
+      - llvm-cov
+      - nextest
+      - -p
+      - migration
+      - --fail-under-lines
+      - '95'
+      - --fail-under-regions
+      - '95'
+      - --fail-under-functions
+      - '95'
+    inputs:
+      - 'Cargo.toml'
+      - 'src/**/*.rs'
+      - 'tests/**/*.rs'
+    # Unique target dir avoids parallel crate coverages clobbering nextest binaries
+    # (double-spawn "No such file" under shared target/llvm-cov-target).
+    env:
+      CARGO_TARGET_DIR: 'target/llvm-cov-migration'
+      CARGO_INCREMENTAL: '0'
+    options:
+      runFromWorkspaceRoot: true
+      cache: true
+      outputStyle: buffer-only-failure
+  build:
+    description: 'cargo build -p migration'
+    deps: ['test-loco-webapp:format', '^:build', '~:test']
+    command:
+      - cargo
+      - build
+      - -p
+      - migration
+      - --all-targets
+      - --all-features
+    inputs:
+      - 'Cargo.toml'
+      - 'src/**/*.rs'
+      - 'tests/**/*.rs'
+      - 'examples/**/*.rs'
+    options:
+      cache: true
+      outputStyle: buffer-only-failure
+  audit:
+    description: 'Run cargo audit for known Rust security advisories'
+    command: 'cargo'
+    args:
+      - audit
+      - -f
+      - Cargo.lock
+      # Transitive advisories; also listed in .cargo/audit.toml
+      - --ignore
+      - RUSTSEC-2026-0194
+      - --ignore
+      - RUSTSEC-2026-0195
+      - --ignore
+      - RUSTSEC-2026-0235
+      - --ignore
+      - RUSTSEC-2023-0071
+    inputs:
+      - '/Cargo.lock'
+      - 'Cargo.toml'
+      - '/.cargo/audit.toml'
+    options:
+      runFromWorkspaceRoot: true
+      cache: true
+      outputStyle: buffer-only-failure
+  docs:
+    description: 'cargo doc -p migration --no-deps'
+    deps: ['~:check']
+    command:
+      - cargo
+      - doc
+      - -p
+      - migration
+      - --no-deps
+      - --all-features
+    inputs:
+      - 'Cargo.toml'
+      - 'src/**/*.rs'
+    options:
+      cache: true
+      outputStyle: buffer-only-failure
+  bench:
+    description: 'Run benchmarks for migration (no-op if no benches)'
+    command: 'bash'
+    args:
+      - '-c'
+      - 'if [ -d benches ]; then cargo bench -p migration; else echo "No benches/ directory"; fi'
+    inputs:
+      - 'Cargo.toml'
+      - 'src/**/*.rs'
+      - 'benches/**/*'
+    options:
+      cache: false
+      outputStyle: buffer-only-failure
+  check-docs:
+    description: 'Build docs for migration (public API docs via rustc lints)'
+    command: 'bash'
+    args:
+      - '-c'
+      - 'mkdir -p ../../log && RUSTDOCFLAGS="" cargo doc -p migration --all-features --no-deps 2>&1 | tee ../../log/docs-warnings-migration.log | grep -E "(warning|error|Documenting|Finished)"'
+    inputs:
+      - 'Cargo.toml'
+      - 'src/**/*.rs'
+    options:
+      outputStyle: buffer-only-failure
+  examples:
+    description: 'Run all crate example binaries (examples/*.rs); no-op if none'
+    deps: ['test-loco-webapp:format', '~:test']
+    command: 'bash'
+    args:
+      - '../../scripts/moon-run-crate-examples.sh'
+      - 'migration'
+    inputs:
+      - 'Cargo.toml'
+      - 'src/**/*.rs'
+      - 'examples/**/*.rs'
+    options:
+      cache: true
+      outputStyle: buffer-only-failure

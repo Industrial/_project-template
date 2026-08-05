@@ -63,7 +63,7 @@
     doCheck = false;
   };
 in {
-  name = "project-template";
+  name = "test-loco-webapp";
 
   dotenv = {
     enable = true;
@@ -122,7 +122,11 @@ in {
     RUST_BACKTRACE = "1";
     CARGO_TERM_COLOR = "always";
     RUSTC_WRAPPER = "sccache";
+    # Serial moon avoids cargo target lock contention under hook execution.
+    MOON_CONCURRENCY = "1";
     MOON_TOOLCHAIN_FORCE_GLOBALS = "rust";
+    # Match `cargo test` exit status when a crate has no tests (nextest defaults to failing with code 4).
+    NEXTEST_NO_TESTS = "pass";
   };
 
   # Development packages
@@ -151,6 +155,7 @@ in {
     gh
     uv
     commitizen
+    prek
 
     roam-code
     lean-ctx
@@ -182,22 +187,25 @@ in {
       '';
     };
 
-    # Pre-commit: definitively fix loop (:ci-format → :test; LLM retries until green; local only)
+    # Pre-commit / pre-push: shared wrappers so git hooks and `devenv shell -- pre-commit` stay aligned.
     pre-commit = {
       exec = ''
-        moon run :format :check :lint :test
+        exec "$DEVENV_ROOT/scripts/git-hook-pre-commit.sh"
       '';
     };
 
-    # Pre-push: definitively fix loop (:ci-format → :build → :coverage → :audit; LLM retries until green; local only)
     pre-push = {
       exec = ''
-        moon run :format :check :lint :build :test :audit :check-docs
+        exec "$DEVENV_ROOT/scripts/git-hook-pre-push.sh"
       '';
     };
   };
 
+  # Hook install: `devenv:git-hooks:install` then `scripts/install-git-hooks.sh` (-f overwrite; see enterShell).
   enterShell = ''
+    mkdir -p "$DEVENV_ROOT/tmp"
+    export TMPDIR="$DEVENV_ROOT/tmp"
+
     moon-sync
 
     # uv sync installs Serena into `.devenv/state/venv/bin`; devenv does not prepend by default.
@@ -205,13 +213,17 @@ in {
 
     mkdir -p "$HOME/.cache/sccache"
     chmod 755 "$HOME/.cache/sccache" 2>/dev/null || true
+
+    # prek install without -f leaves migration-mode shims: hooks pass but commit/push abort.
+    "$DEVENV_ROOT/scripts/install-git-hooks.sh"
   '';
 
   git-hooks = {
     package = pkgs.prek;
 
+    # commit-msg only via prek. pre-commit / pre-push are installed directly by
+    # scripts/install-git-hooks.sh so moon sees the full worktree (no prek stash).
     default_stages = [
-      "pre-push"
       "commit-msg"
     ];
 
@@ -220,24 +232,13 @@ in {
         enable = true;
       };
 
+      # Disabled here — see scripts/install-git-hooks.sh (direct moon wrappers).
       pre-commit = {
-        enable = true;
-        name = "pre-commit";
-        entry = "pre-commit";
-        stages = ["pre-commit"];
-        pass_filenames = false;
-        always_run = true;
-        language = "system";
+        enable = false;
       };
 
       pre-push = {
-        enable = true;
-        name = "pre-push";
-        entry = "pre-push";
-        stages = ["pre-push"];
-        pass_filenames = false;
-        always_run = true;
-        language = "system";
+        enable = false;
       };
     };
   };

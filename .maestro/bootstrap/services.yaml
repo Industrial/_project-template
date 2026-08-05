@@ -6,5 +6,4 @@ commands:
   lint: echo "Customize commands.lint in .maestro/bootstrap/services.yaml"
   missionControlJson: echo "Customize commands.missionControlJson in .maestro/bootstrap/services.yaml"
   missionControlPreview: echo "Customize commands.missionControlPreview in .maestro/bootstrap/services.yaml"
-
 services: {}

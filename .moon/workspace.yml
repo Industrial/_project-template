@@ -7,10 +7,17 @@ $schema: './cache/schemas/workspace.json'
 hasher:
   ignorePatterns:
     - '**/target/**'
-# Rust workspace crates
+    - '**/node_modules/**'
+    - '**/.devenv/**'
+    - '**/tmp/**'
+    - '**/frontend/dist/**'
+    - '**/.git/**'
+# Root application (`moon.yml`) plus every workspace crate under `crates/`.
+# `moon run :check` / `:test` / `:build` fans out across all projects; use
+# `moon run domain-core:test` (etc.) for a single crate.
 projects:
-  - 'crates/*'
   - '.'
+  - 'crates/*'
 vcs:
   client: 'git'
   defaultBranch: 'main'

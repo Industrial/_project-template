@@ -1,0 +1,27 @@
+[package]
+name = "migration"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lib]
+name = "migration"
+path = "src/lib.rs"
+
+[dependencies]
+loco-rs = { workspace = true }
+
+[dependencies.sea-orm-migration]
+version = "2.0"
+features = ["runtime-tokio-rustls", "sqlx-sqlite"]
+
+[dev-dependencies]
+tokio = { version = "1.45", default-features = false, features = [
+  "macros",
+  "rt-multi-thread",
+] }
+sea-orm = { version = "2.0", features = [
+  "sqlx-sqlite",
+  "runtime-tokio-rustls",
+] }

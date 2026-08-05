@@ -3,32 +3,26 @@
 
 [profile.default]
 retries = 3
-fail-fast = 5
+fail-fast = false
+max-fail = 5
 test-timeout = "60s"
-slow-timeout = "5s"
+slow-timeout = { period = "5s", terminate-after = 1 }
 
-cache = true
+# Loco SQLite tests share one DB + dangerously_recreate. #[serial] does not
+# serialize across nextest processes, so run this package with one thread.
+[test-groups]
+loco_sqlite = { max-threads = 1 }
 
-[profile.default.output]
-status = "all"
-failure-output = "immediate"
-success-output = "immediate"
-
-[profile.default.run]
-threads = "auto"
-capture-output = true
+[[profile.default.overrides]]
+filter = 'package(test-loco-webapp)'
+test-group = 'loco_sqlite'
 
 [profile.ci]
 retries = 1
-fail-fast = 1
+fail-fast = true
 test-timeout = "120s"
-slow-timeout = "10s"
+slow-timeout = { period = "10s", terminate-after = 1 }
 
-[profile.ci.output]
-status = "all"
-failure-output = "immediate"
-success-output = "none"
-
-[profile.ci.run]
-threads = "auto"
-capture-output = true
+[[profile.ci.overrides]]
+filter = 'package(test-loco-webapp)'
+test-group = 'loco_sqlite'
