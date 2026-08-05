@@ -27,4 +27,20 @@ if [[ -x "$RUST_ANALYZER" ]]; then
     chmod +x "$SERENA_RA_DIR/rust_analyzer"
 fi
 
+# Default to CWD-based project selection so cloned repos never collide on template names.
+if [[ $# -eq 0 ]]; then
+    set -- --project-from-cwd --log-level WARNING
+else
+    has_project=false
+    for arg in "$@"; do
+        if [[ "$arg" == "--project" || "$arg" == "--project-from-cwd" ]]; then
+            has_project=true
+            break
+        fi
+    done
+    if [[ "$has_project" == false ]]; then
+        set -- --project-from-cwd "$@"
+    fi
+fi
+
 exec "$SERENA" start-mcp-server "$@"

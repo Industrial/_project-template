@@ -150,6 +150,7 @@ in {
     git
     gh
     uv
+    commitizen
 
     roam-code
     lean-ctx
