@@ -2,7 +2,6 @@
 # live in `.cursor/nix/devenv.yaml`. Project-only pins stay here.
 imports:
   - ./.cursor/nix
-
 inputs:
   definitively:
     url: github:Industrial/definitively/definitively-v0.4.1
