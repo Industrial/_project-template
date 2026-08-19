@@ -1,9 +1,9 @@
 use loco_rs::prelude::*;
+use loco_rs::task::Vars;
 
-use crate::{
-    mailers::auth::AuthMailer,
-    models::{_entities::users, users::RegisterParams},
-};
+use crate::mailers::auth::AuthMailer;
+use crate::models::UserModel;
+use crate::models::users::RegisterParams;
 
 pub struct UserCreate;
 #[async_trait]
@@ -14,7 +14,7 @@ impl Task for UserCreate {
             detail: "Create a new user with email, name, and password. Sends welcome email and sets up email verification.\nUsage:\ncargo run task user:create email:user@example.com name:\"John Doe\" password:\"securepassword\"".to_string(),
         }
     }
-    async fn run(&self, app_context: &AppContext, vars: &task::Vars) -> Result<()> {
+    async fn run(&self, app_context: &AppContext, vars: &Vars) -> Result<()> {
         let email = vars
             .cli_arg("email")
             .map_err(|_| Error::string("email is mandatory"))?;
@@ -31,7 +31,7 @@ impl Task for UserCreate {
             name: name.to_owned(),
         };
 
-        let user = users::Model::create_with_password(&app_context.db, &register_params)
+        let user = UserModel::create_with_password(&app_context.db, &register_params)
             .await
             .map_err(|err| Error::string(&format!("Failed to create user. err: {err}")))?;
 

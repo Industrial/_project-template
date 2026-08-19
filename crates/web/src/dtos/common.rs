@@ -1,6 +1,8 @@
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use ts_rs::TS;
 
-#[derive(serde::Serialize, serde::Deserialize, TS)]
+#[derive(Serialize, Deserialize, TS)]
 #[ts(export, export_to = "../frontend/src/bindings/")]
 pub struct Page<T: TS> {
     pub items: Vec<T>,
@@ -12,11 +14,11 @@ pub struct Page<T: TS> {
     pub per_page: u64,
 }
 
-#[derive(serde::Serialize, serde::Deserialize, TS)]
+#[derive(Serialize, Deserialize, TS)]
 #[ts(export, export_to = "../frontend/src/bindings/")]
 pub struct ApiError {
     pub code: String,
     pub message: String,
     #[ts(type = "unknown")]
-    pub details: Option<serde_json::Value>,
+    pub details: Option<Value>,
 }

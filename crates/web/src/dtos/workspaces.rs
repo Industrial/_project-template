@@ -1,7 +1,9 @@
+use crate::models::WorkspaceModel;
 use sea_orm::prelude::DateTimeWithTimeZone;
+use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-#[derive(serde::Serialize, serde::Deserialize, TS)]
+#[derive(Serialize, Deserialize, TS)]
 #[ts(export, export_to = "../frontend/src/bindings/")]
 pub struct WorkspaceDto {
     #[ts(type = "number")]
@@ -13,8 +15,8 @@ pub struct WorkspaceDto {
     pub updated_at: DateTimeWithTimeZone,
 }
 
-impl From<crate::models::_entities::workspaces::Model> for WorkspaceDto {
-    fn from(m: crate::models::_entities::workspaces::Model) -> Self {
+impl From<WorkspaceModel> for WorkspaceDto {
+    fn from(m: WorkspaceModel) -> Self {
         Self {
             id: m.id,
             name: m.name,
@@ -24,13 +26,13 @@ impl From<crate::models::_entities::workspaces::Model> for WorkspaceDto {
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize, TS)]
+#[derive(Serialize, Deserialize, TS)]
 #[ts(export, export_to = "../frontend/src/bindings/")]
 pub struct CreateWorkspace {
     pub name: String,
 }
 
-#[derive(serde::Serialize, serde::Deserialize, TS)]
+#[derive(Serialize, Deserialize, TS)]
 #[ts(export, export_to = "../frontend/src/bindings/")]
 pub struct UpdateWorkspace {
     pub name: String,

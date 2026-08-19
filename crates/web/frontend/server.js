@@ -1,73 +1,90 @@
-import fs from "node:fs/promises";
-import express from "express";
-import { createProxyMiddleware } from "http-proxy-middleware";
+// The entire production server for a turnkey SSR app: static client assets
+// plus one import — the built server bundle's `handleRequest`, an
+// adapter-agnostic web `Request -> Response` handler that streams the SSR
+// render, resolves hashed client assets through the build manifest, and
+// (with serverFunctions enabled) serves the `/_server` endpoint too. The
+// node <-> web plumbing below is the only glue; on a web-native platform
+// (workers, Deno, Bun.serve) `handleRequest` is used directly.
+import { createServer } from 'node:http'
+import { readFileSync } from 'node:fs'
+import { Readable } from 'node:stream'
+import { fileURLToPath } from 'node:url'
+import path from 'node:path'
+import { handleRequest } from './dist/server/server.js'
 
-const isProduction = process.env.NODE_ENV === "production";
-const port = process.env.PORT || 5174;
-const base = process.env.BASE || "/";
-const apiTarget = process.env.LOCO_API_URL || "http://localhost:5150";
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const port = process.env.PORT || 3000
 
-const templateHtml = isProduction
-	? await fs.readFile("./dist/client/index.html", "utf-8")
-	: "";
-
-const app = express();
-
-app.use(
-	"/api",
-	createProxyMiddleware({
-		target: apiTarget,
-		changeOrigin: true,
-	}),
-);
-
-/** @type {import('vite').ViteDevServer | undefined} */
-let vite;
-if (!isProduction) {
-	const { createServer } = await import("vite");
-	vite = await createServer({
-		server: { middlewareMode: true },
-		appType: "custom",
-		base,
-	});
-	app.use(vite.middlewares);
-} else {
-	const compression = (await import("compression")).default;
-	const sirv = (await import("sirv")).default;
-	app.use(compression());
-	app.use(base, sirv("./dist/client", { extensions: [] }));
+const MIME = {
+  '.js': 'application/javascript',
+  '.css': 'text/css',
+  '.html': 'text/html',
+  '.json': 'application/json',
+  '.ico': 'image/x-icon',
+  '.svg': 'image/svg+xml',
 }
 
-app.use("*all", async (req, res) => {
-	try {
-		const url = req.originalUrl.replace(base, "");
+function webRequest(req) {
+  const url = new URL(
+    req.url || '/',
+    `http://${req.headers.host || `localhost:${port}`}`,
+  )
+  const method = req.method || 'GET'
+  const body =
+    method === 'GET' || method === 'HEAD' ? undefined : Readable.toWeb(req)
+  return new Request(url, {
+    method,
+    headers: req.headers,
+    body,
+    ...(body ? { duplex: 'half' } : {}),
+  })
+}
 
-		let template;
-		let render;
-		if (!isProduction) {
-			template = await fs.readFile("./index.html", "utf-8");
-			template = await vite.transformIndexHtml(url, template);
-			render = (await vite.ssrLoadModule("/src/entry-server.tsx")).render;
-		} else {
-			template = templateHtml;
-			render = (await import("./dist/server/entry-server.js")).render;
-		}
+const server = createServer(async (req, res) => {
+  const url = req.url || '/'
 
-		const rendered = await render(url);
-		const html = template
-			.replace(`<!--app-head-->`, rendered.head ?? "")
-			.replace(`<!--app-html-->`, rendered.html ?? "");
+  // Static client assets first.
+  if (url !== '/' && !url.includes('..')) {
+    try {
+      const content = readFileSync(
+        path.resolve(__dirname, `dist/client${url.split('?')[0]}`),
+      )
+      res.setHeader(
+        'Content-Type',
+        MIME[path.extname(url)] || 'application/octet-stream',
+      )
+      res.end(content)
+      return
+    } catch {
+      // Fall through to the handler (SSR routes, /_server, ...).
+    }
+  }
 
-		res.status(200).set({ "Content-Type": "text/html" }).send(html);
-	} catch (e) {
-		vite?.ssrFixStacktrace(e);
-		console.error(e.stack);
-		res.status(500).end(e.stack);
-	}
-});
+  try {
+    const response = await handleRequest(webRequest(req))
+    res.statusCode = response.status
+    const cookies = response.headers.getSetCookie?.()
+    response.headers.forEach((value, key) => {
+      if (key !== 'set-cookie') {
+        res.setHeader(key, value)
+      }
+    })
+    if (cookies?.length) {
+      res.setHeader('set-cookie', cookies)
+    }
+    if (response.body) {
+      for await (const chunk of response.body) {
+        res.write(chunk)
+      }
+    }
+    res.end()
+  } catch (e) {
+    console.error(e)
+    res.statusCode = 500
+    res.end(e.message)
+  }
+})
 
-app.listen(port, () => {
-	console.log(
-		`Vite SSR started at http://localhost:${port} (API → ${apiTarget})`,
-	);
-});
+server.listen(port, () => {
+  console.log(`Server running at http://localhost:${port}`)
+})

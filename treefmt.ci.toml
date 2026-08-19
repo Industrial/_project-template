@@ -2,7 +2,7 @@
 
 # Do not exit with error if a configured formatter is missing
 # Env $TREEFMT_ALLOW_MISSING_FORMATTER
-# allow-missing-formatter = true
+allow-missing-formatter = true
 
 # The file into which a cpu profile will be written
 # Env $TREEFMT_CPU_PROFILE
@@ -10,7 +10,16 @@
 
 # Exclude files or directories matching the specified globs
 # Env $TREEFMT_EXCLUDES
-# excludes = ["*.md", "*.gif"]
+excludes = [
+  ".pre-commit-config.yaml",
+  "**/node_modules/**",
+  "**/target/**",
+  "**/.git/**",
+  "**/dist/**",
+  "**/frontend_old/**",
+  ".cursor/**",
+  ".vscode/**",
+]
 
 # Exit with error if any changes were made during execution
 # Useful for CI
@@ -76,8 +85,26 @@ priority = 3
 
 [formatter.javascript]
 command = "biome"
-options = ["format", "--write"]
-includes = ["*.{js,jsx,ts,tsx,json}"]
+options = ["format", "--write", "--config-path=biome.json"]
+includes = [
+  "*.js",
+  "*.jsx",
+  "*.mjs",
+  "*.cjs",
+  "*.ts",
+  "*.tsx",
+  "*.json",
+  "*.jsonc",
+]
+excludes = [
+  "**/node_modules/**/*",
+  "**/dist/**/*",
+  "**/frontend_old/**/*",
+  "**/file-routes.d.ts",
+  "**/biome.json",
+  ".vscode/**",
+  ".cursor/**",
+]
 priority = 4
 
 [formatter.yaml]

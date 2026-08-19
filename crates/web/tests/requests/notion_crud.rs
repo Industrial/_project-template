@@ -106,7 +106,8 @@ async fn notion_crud_happy_path_and_404s() {
                 .json(&serde_json::json!({
                     "title": "Home 2",
                     "icon": null,
-                    "position": 1
+                    "position": 1,
+                    "parent_page_id": null
                 }))
                 .await
                 .status_code(),
@@ -145,7 +146,8 @@ async fn notion_crud_happy_path_and_404s() {
                 "block_type": "paragraph",
                 "checked": false,
                 "position": 0,
-                "page_id": page_id
+                "page_id": page_id,
+                "content": { "text": "hello" }
             }))
             .await;
         assert_eq!(block_created.status_code(), 201);
@@ -166,7 +168,8 @@ async fn notion_crud_happy_path_and_404s() {
                 .json(&serde_json::json!({
                     "block_type": "todo",
                     "checked": true,
-                    "position": 2
+                    "position": 2,
+                    "content": { "text": "done" }
                 }))
                 .await
                 .status_code(),
@@ -448,14 +451,15 @@ async fn notion_crud_happy_path_and_404s() {
             ("/api/workspaces/999999", serde_json::json!({ "name": "x" })),
             (
                 "/api/pages/999999",
-                serde_json::json!({ "title": "x", "icon": null, "position": 0 }),
+                serde_json::json!({ "title": "x", "icon": null, "position": 0, "parent_page_id": null }),
             ),
             (
                 "/api/blocks/999999",
                 serde_json::json!({
                     "block_type": "paragraph",
                     "checked": false,
-                    "position": 0
+                    "position": 0,
+                    "content": null
                 }),
             ),
             ("/api/comments/999999", serde_json::json!({ "body": "x" })),

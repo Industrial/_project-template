@@ -11,13 +11,16 @@ hasher:
     - '**/.devenv/**'
     - '**/tmp/**'
     - '**/frontend/dist/**'
+    - '**/frontend_old/**'
     - '**/.git/**'
-# Root application (`moon.yml`) plus every workspace crate under `crates/`.
+# Root application (`moon.yml`), Rust crates, and the Solid frontend.
 # `moon run :check` / `:test` / `:build` fans out across all projects; use
-# `moon run domain-core:test` (etc.) for a single crate.
+# `moon run web:test` (etc.) for a single crate.
 projects:
   - '.'
-  - 'crates/*'
+  - 'crates/web'
+  - 'crates/migration'
+  - 'crates/web/frontend'
 vcs:
   client: 'git'
   defaultBranch: 'main'

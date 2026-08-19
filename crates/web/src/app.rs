@@ -1,20 +1,26 @@
 use async_trait::async_trait;
-use loco_rs::{
-    Result,
-    app::{AppContext, Hooks, Initializer},
-    bgworker::{BackgroundWorker, Queue},
-    boot::{BootResult, StartMode, create_app},
-    config::Config,
-    controller::AppRoutes,
-    db::{self, truncate_table},
-    environment::Environment,
-    task::Tasks,
-};
+use loco_rs::Result;
+use loco_rs::app::{AppContext, Hooks, Initializer};
+use loco_rs::bgworker::{BackgroundWorker, Queue};
+use loco_rs::boot::{BootResult, StartMode, create_app};
+use loco_rs::config::Config;
+use loco_rs::controller::AppRoutes;
+use loco_rs::db::{seed, truncate_table};
+use loco_rs::environment::Environment;
+use loco_rs::task::Tasks;
 use migration::Migrator;
 use std::path::Path;
 
-#[allow(unused_imports)]
-use crate::{controllers, models::_entities::users, tasks, workers::downloader::DownloadWorker};
+use crate::controllers::auth::routes as auth_routes;
+use crate::controllers::blocks::routes as blocks_routes;
+use crate::controllers::comments::routes as comments_routes;
+use crate::controllers::page_shares::routes as page_shares_routes;
+use crate::controllers::pages::routes as pages_routes;
+use crate::controllers::workspace_members::routes as workspace_members_routes;
+use crate::controllers::workspaces::routes as workspaces_routes;
+use crate::models::users::{ActiveModel as UserActiveModel, Entity as UserEntity};
+use crate::tasks::user_create::UserCreate;
+use crate::workers::downloader::DownloadWorker;
 
 pub struct App;
 #[async_trait]
@@ -47,13 +53,13 @@ impl Hooks for App {
 
     fn routes(_ctx: &AppContext) -> AppRoutes {
         AppRoutes::with_default_routes() // controller routes below
-            .add_route(controllers::comments::routes())
-            .add_route(controllers::page_shares::routes())
-            .add_route(controllers::workspace_members::routes())
-            .add_route(controllers::blocks::routes())
-            .add_route(controllers::pages::routes())
-            .add_route(controllers::workspaces::routes())
-            .add_route(controllers::auth::routes())
+            .add_route(comments_routes())
+            .add_route(page_shares_routes())
+            .add_route(workspace_members_routes())
+            .add_route(blocks_routes())
+            .add_route(pages_routes())
+            .add_route(workspaces_routes())
+            .add_route(auth_routes())
     }
     async fn connect_workers(ctx: &AppContext, queue: &Queue) -> Result<()> {
         queue.register(DownloadWorker::build(ctx)).await?;
@@ -63,15 +69,14 @@ impl Hooks for App {
     #[allow(unused_variables)]
     fn register_tasks(tasks: &mut Tasks) {
         // tasks-inject (do not remove)
-        tasks.register(tasks::user_create::UserCreate);
+        tasks.register(UserCreate);
     }
     async fn truncate(ctx: &AppContext) -> Result<()> {
-        truncate_table(&ctx.db, users::Entity).await?;
+        truncate_table(&ctx.db, UserEntity).await?;
         Ok(())
     }
     async fn seed(ctx: &AppContext, base: &Path) -> Result<()> {
-        db::seed::<users::ActiveModel>(&ctx.db, &base.join("users.yaml").display().to_string())
-            .await?;
+        seed::<UserActiveModel>(&ctx.db, &base.join("users.yaml").display().to_string()).await?;
         Ok(())
     }
 }

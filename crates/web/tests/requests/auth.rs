@@ -56,6 +56,36 @@ async fn can_register() {
     .await;
 }
 
+#[tokio::test]
+#[serial]
+async fn cannot_register_duplicate_email() {
+    configure_insta!();
+
+    request::<App, _, _>(|request, _ctx| async move {
+        let payload = serde_json::json!({
+            "name": "loco",
+            "email": "duplicate@loco.com",
+            "password": "12341234"
+        });
+
+        let first = request.post("/api/auth/register").json(&payload).await;
+        assert_eq!(first.status_code(), 200, "First register should succeed");
+
+        let duplicate = request.post("/api/auth/register").json(&payload).await;
+        assert_eq!(
+            duplicate.status_code(),
+            409,
+            "Duplicate register should conflict"
+        );
+        duplicate.assert_json(&serde_json::json!({
+            "code": "email_taken",
+            "message": "An account with this email already exists. Log in or reset your password.",
+            "details": null
+        }));
+    })
+    .await;
+}
+
 #[rstest]
 #[case("login_with_valid_password", "12341234")]
 #[case("login_with_invalid_password", "invalid-password")]
@@ -370,18 +400,18 @@ async fn can_auth_with_magic_link() {
 
 #[tokio::test]
 #[serial]
-async fn can_reject_invalid_email() {
+async fn magic_link_accepts_any_email_domain() {
     configure_insta!();
     request::<App, _, _>(|request, _ctx| async move {
-        let invalid_email = "user1@temp-mail.com";
         let payload = serde_json::json!({
-            "email": invalid_email,
+            "email": "user1@temp-mail.com",
         });
         let response = request.post("/api/auth/magic-link").json(&payload).await;
+        // Unknown emails still return 200 so we do not leak account existence.
         assert_eq!(
             response.status_code(),
-            400,
-            "Expected request with invalid email '{invalid_email}' to be blocked, but it was allowed."
+            200,
+            "Magic link should not enforce email domain allowlists"
         );
     })
     .await;

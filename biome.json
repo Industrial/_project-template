@@ -1,0 +1,77 @@
+{
+  "root": true,
+  "$schema": "https://biomejs.dev/schemas/2.3.15/schema.json",
+  "files": {
+    "ignoreUnknown": false,
+    "includes": [
+      "crates/web/frontend/**",
+      "!crates/web/frontend/node_modules",
+      "!crates/web/frontend/dist",
+      "!crates/web/frontend/file-routes.d.ts",
+      "!.cursor",
+      "!**/*.html"
+    ]
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "useEditorconfig": false
+  },
+  "assist": {
+    "actions": {
+      "source": {
+        "organizeImports": "off"
+      }
+    }
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single",
+      "semicolons": "asNeeded"
+    }
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "complexity": {
+        "noForEach": "off"
+      },
+      "correctness": {
+        "noUnusedFunctionParameters": "off",
+        "useExhaustiveDependencies": "error",
+        "useHookAtTopLevel": "error",
+        "useUniqueElementIds": "off"
+      },
+      "style": {
+        "noNonNullAssertion": "error",
+        "noParameterAssign": "off",
+        "useNodejsImportProtocol": "off",
+        "useBlockStatements": "error"
+      },
+      "suspicious": {
+        "noArrayIndexKey": "off",
+        "noExplicitAny": "off",
+        "noImplicitAnyLet": "off",
+        "noUnknownAtRules": "off"
+      },
+      "a11y": {
+        "noStaticElementInteractions": "error",
+        "useFocusableInteractive": "error",
+        "useKeyWithClickEvents": "error",
+        "useSemanticElements": "error",
+        "useAriaPropsForRole": "error",
+        "useAriaPropsSupportedByRole": "error",
+        "noLabelWithoutControl": "error"
+      },
+      "performance": {
+        "noAccumulatingSpread": "off"
+      }
+    }
+  },
+  "vcs": {
+    "clientKind": "git",
+    "enabled": true,
+    "useIgnoreFile": true
+  }
+}

@@ -1,11 +1,14 @@
 use async_trait::async_trait;
-use chrono::{Duration, offset::Local};
-use loco_rs::{auth::jwt, hash, prelude::*};
+use chrono::{Duration, Local};
+use loco_rs::auth::jwt::JWT;
+use loco_rs::hash::{hash_password, random_string, verify_password};
+use loco_rs::model::query::condition;
+use loco_rs::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Map;
 use uuid::Uuid;
 
-pub use super::_entities::users::{self, ActiveModel, Entity, Model};
+pub use super::_entities::users::{ActiveModel, Column, Entity, Model};
 
 pub const MAGIC_LINK_LENGTH: i8 = 32;
 pub const MAGIC_LINK_EXPIRATION_MIN: i8 = 5;
@@ -28,21 +31,18 @@ pub struct RegisterParams {
 pub struct Validator {
     #[validate(length(min = 2, message = "Name must be at least 2 characters long."))]
     pub name: String,
-    #[validate(email(message = "invalid email"))]
-    pub email: String,
 }
 
 impl Validatable for ActiveModel {
     fn validator(&self) -> Box<dyn Validate> {
         Box::new(Validator {
             name: self.name.as_ref().to_owned(),
-            email: self.email.as_ref().to_owned(),
         })
     }
 }
 
-#[async_trait::async_trait]
-impl ActiveModelBehavior for super::_entities::users::ActiveModel {
+#[async_trait]
+impl ActiveModelBehavior for ActiveModel {
     async fn before_save<C>(self, _db: &C, insert: bool) -> Result<Self, DbErr>
     where
         C: ConnectionTrait,
@@ -77,12 +77,8 @@ impl Model {
     ///
     /// When could not find user by the given token or DB query error
     pub async fn find_by_email(db: &DatabaseConnection, email: &str) -> ModelResult<Self> {
-        let user = users::Entity::find()
-            .filter(
-                model::query::condition()
-                    .eq(users::Column::Email, email)
-                    .build(),
-            )
+        let user = Entity::find()
+            .filter(condition().eq(Column::Email, email).build())
             .one(db)
             .await?;
         user.ok_or_else(|| ModelError::EntityNotFound)
@@ -97,10 +93,10 @@ impl Model {
         db: &DatabaseConnection,
         token: &str,
     ) -> ModelResult<Self> {
-        let user = users::Entity::find()
+        let user = Entity::find()
             .filter(
-                model::query::condition()
-                    .eq(users::Column::EmailVerificationToken, token)
+                condition()
+                    .eq(Column::EmailVerificationToken, token)
                     .build(),
             )
             .one(db)
@@ -114,12 +110,8 @@ impl Model {
     ///
     /// When could not find user by the given token or DB query error ot token expired
     pub async fn find_by_magic_token(db: &DatabaseConnection, token: &str) -> ModelResult<Self> {
-        let user = users::Entity::find()
-            .filter(
-                query::condition()
-                    .eq(users::Column::MagicLinkToken, token)
-                    .build(),
-            )
+        let user = Entity::find()
+            .filter(condition().eq(Column::MagicLinkToken, token).build())
             .one(db)
             .await?;
 
@@ -137,12 +129,8 @@ impl Model {
     ///
     /// When could not find user by the given token or DB query error
     pub async fn find_by_reset_token(db: &DatabaseConnection, token: &str) -> ModelResult<Self> {
-        let user = users::Entity::find()
-            .filter(
-                model::query::condition()
-                    .eq(users::Column::ResetToken, token)
-                    .build(),
-            )
+        let user = Entity::find()
+            .filter(condition().eq(Column::ResetToken, token).build())
             .one(db)
             .await?;
 
@@ -165,12 +153,8 @@ impl Model {
     /// When could not find user  or DB query error
     pub async fn find_by_pid(db: &DatabaseConnection, pid: &str) -> ModelResult<Self> {
         let parse_uuid = Uuid::parse_str(pid).map_err(|e| ModelError::Any(e.into()))?;
-        let user = users::Entity::find()
-            .filter(
-                model::query::condition()
-                    .eq(users::Column::Pid, parse_uuid)
-                    .build(),
-            )
+        let user = Entity::find()
+            .filter(condition().eq(Column::Pid, parse_uuid).build())
             .one(db)
             .await?;
         user.ok_or_else(|| ModelError::EntityNotFound)
@@ -182,12 +166,8 @@ impl Model {
     ///
     /// When could not find user by the given token or DB query error
     pub async fn find_by_api_key(db: &DatabaseConnection, api_key: &str) -> ModelResult<Self> {
-        let user = users::Entity::find()
-            .filter(
-                model::query::condition()
-                    .eq(users::Column::ApiKey, api_key)
-                    .build(),
-            )
+        let user = Entity::find()
+            .filter(condition().eq(Column::ApiKey, api_key).build())
             .one(db)
             .await?;
         user.ok_or_else(|| ModelError::EntityNotFound)
@@ -200,7 +180,7 @@ impl Model {
     /// when could not verify password
     #[must_use]
     pub fn verify_password(&self, password: &str) -> bool {
-        hash::verify_password(password, &self.password)
+        verify_password(password, &self.password)
     }
 
     /// Asynchronously creates a user with a password and saves it to the
@@ -215,12 +195,8 @@ impl Model {
     ) -> ModelResult<Self> {
         let txn = db.begin().await?;
 
-        if users::Entity::find()
-            .filter(
-                model::query::condition()
-                    .eq(users::Column::Email, &params.email)
-                    .build(),
-            )
+        if Entity::find()
+            .filter(condition().eq(Column::Email, &params.email).build())
             .one(&txn)
             .await?
             .is_some()
@@ -229,8 +205,8 @@ impl Model {
         }
 
         let password_hash =
-            hash::hash_password(&params.password).map_err(|e| ModelError::Any(e.into()))?;
-        let user = users::ActiveModel {
+            hash_password(&params.password).map_err(|e| ModelError::Any(e.into()))?;
+        let user = ActiveModel {
             email: ActiveValue::set(params.email.clone()),
             password: ActiveValue::set(password_hash),
             name: ActiveValue::set(params.name.clone()),
@@ -250,7 +226,7 @@ impl Model {
     ///
     /// when could not convert user claims to jwt token
     pub fn generate_jwt(&self, secret: &str, expiration: u64) -> ModelResult<String> {
-        jwt::JWT::new(secret)
+        JWT::new(secret)
             .generate_token(expiration, self.pid.to_string(), Map::new())
             .map_err(ModelError::from)
     }
@@ -324,7 +300,7 @@ impl ActiveModel {
         password: &str,
     ) -> ModelResult<Model> {
         self.password =
-            ActiveValue::set(hash::hash_password(password).map_err(|e| ModelError::Any(e.into()))?);
+            ActiveValue::set(hash_password(password).map_err(|e| ModelError::Any(e.into()))?);
         self.reset_token = ActiveValue::Set(None);
         self.reset_sent_at = ActiveValue::Set(None);
         self.update(db).await.map_err(ModelError::from)
@@ -338,7 +314,7 @@ impl ActiveModel {
     /// # Errors
     /// - Returns an error if database update fails
     pub async fn create_magic_link(mut self, db: &DatabaseConnection) -> ModelResult<Model> {
-        let random_str = hash::random_string(MAGIC_LINK_LENGTH as usize);
+        let random_str = random_string(MAGIC_LINK_LENGTH as usize);
         let expired = Local::now() + Duration::minutes(MAGIC_LINK_EXPIRATION_MIN.into());
 
         self.magic_link_token = ActiveValue::set(Some(random_str));

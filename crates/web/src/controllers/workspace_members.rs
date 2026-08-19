@@ -1,25 +1,28 @@
 #![allow(clippy::unused_async)]
-use super::common::{self, ListParams};
-use axum::http::StatusCode;
-use loco_rs::prelude::*;
-use sea_orm::QueryOrder;
 
-use crate::{
-    dtos::{
-        common::Page,
-        workspace_members::{CreateWorkspaceMember, UpdateWorkspaceMember, WorkspaceMemberDto},
-    },
-    models::_entities::workspace_members::{ActiveModel, Column, Entity},
+use axum::http::StatusCode;
+use loco_rs::prelude::auth::JWT;
+use loco_rs::prelude::*;
+use sea_orm::{ColumnTrait, QueryFilter, QueryOrder};
+
+use crate::controllers::common::{ListParams, db_ok, fetch_page, find_optional, not_found};
+use crate::dtos::common::Page;
+use crate::dtos::workspace_members::{
+    CreateWorkspaceMember, UpdateWorkspaceMember, WorkspaceMemberDto,
 };
+use crate::models::workspace_members::{ActiveModel, Column, Entity};
 
 #[debug_handler]
 async fn list(
-    _auth: auth::JWT,
+    _auth: JWT,
     State(ctx): State<AppContext>,
     Query(params): Query<ListParams>,
 ) -> Result<Json<Page<WorkspaceMemberDto>>> {
-    let (items, total, page, per_page) =
-        common::fetch_page(&ctx.db, Entity::find().order_by_asc(Column::Id), params).await;
+    let mut query = Entity::find().order_by_asc(Column::Id);
+    if let Some(workspace_id) = params.workspace_id {
+        query = query.filter(Column::WorkspaceId.eq(workspace_id));
+    }
+    let (items, total, page, per_page) = fetch_page(&ctx.db, query, params).await;
     Ok(Json(Page {
         items: items.into_iter().map(WorkspaceMemberDto::from).collect(),
         total,
@@ -30,19 +33,19 @@ async fn list(
 
 #[debug_handler]
 async fn get_one(
-    _auth: auth::JWT,
+    _auth: JWT,
     State(ctx): State<AppContext>,
     Path(id): Path<i64>,
 ) -> Result<Response> {
-    let Some(model) = common::find_optional(Entity::find_by_id(id).one(&ctx.db)).await else {
-        return Ok(common::not_found("workspace_member not found"));
+    let Some(model) = find_optional(Entity::find_by_id(id).one(&ctx.db)).await else {
+        return Ok(not_found("workspace_member not found"));
     };
     Ok(Json(WorkspaceMemberDto::from(model)).into_response())
 }
 
 #[debug_handler]
 async fn create(
-    _auth: auth::JWT,
+    _auth: JWT,
     State(ctx): State<AppContext>,
     Json(params): Json<CreateWorkspaceMember>,
 ) -> Result<Response> {
@@ -52,40 +55,40 @@ async fn create(
         user_id: Set(params.user_id),
         ..Default::default()
     };
-    let item = common::db_ok(item.insert(&ctx.db)).await;
+    let item = db_ok(item.insert(&ctx.db)).await;
 
     Ok((StatusCode::CREATED, Json(WorkspaceMemberDto::from(item))).into_response())
 }
 
 #[debug_handler]
 async fn update(
-    _auth: auth::JWT,
+    _auth: JWT,
     State(ctx): State<AppContext>,
     Path(id): Path<i64>,
     Json(params): Json<UpdateWorkspaceMember>,
 ) -> Result<Response> {
-    let Some(model) = common::find_optional(Entity::find_by_id(id).one(&ctx.db)).await else {
-        return Ok(common::not_found("workspace_member not found"));
+    let Some(model) = find_optional(Entity::find_by_id(id).one(&ctx.db)).await else {
+        return Ok(not_found("workspace_member not found"));
     };
 
     let mut item = model.into_active_model();
     item.role = Set(params.role);
-    let item = common::db_ok(item.update(&ctx.db)).await;
+    let item = db_ok(item.update(&ctx.db)).await;
 
     Ok(Json(WorkspaceMemberDto::from(item)).into_response())
 }
 
 #[debug_handler]
 async fn remove(
-    _auth: auth::JWT,
+    _auth: JWT,
     State(ctx): State<AppContext>,
     Path(id): Path<i64>,
 ) -> Result<Response> {
-    let Some(model) = common::find_optional(Entity::find_by_id(id).one(&ctx.db)).await else {
-        return Ok(common::not_found("workspace_member not found"));
+    let Some(model) = find_optional(Entity::find_by_id(id).one(&ctx.db)).await else {
+        return Ok(not_found("workspace_member not found"));
     };
 
-    common::db_ok(model.into_active_model().delete(&ctx.db)).await;
+    db_ok(model.into_active_model().delete(&ctx.db)).await;
 
     Ok(StatusCode::NO_CONTENT.into_response())
 }

@@ -23,6 +23,7 @@ tasks:
       - '!**/tmp/**'
       - '!**/target/**'
       - '!**/frontend/dist/**'
+      - '!**/frontend_old/**'
     options:
       cache: false
       outputStyle: buffer-only-failure
@@ -32,6 +33,7 @@ tasks:
     args: ['--config-file', 'treefmt.ci.toml']
     inputs:
       - 'treefmt.ci.toml'
+      - 'biome.json'
       - '**/*.rs'
       - '**/*.nix'
       - '**/*.sh'
@@ -44,8 +46,63 @@ tasks:
       - '!**/tmp/**'
       - '!**/target/**'
       - '!**/frontend/dist/**'
+      - '!**/frontend_old/**'
     options:
       cache: false
+      outputStyle: buffer-only-failure
+  oxlint:
+    description: 'oxlint with deny-warnings (frontend)'
+    deps: ['~:format']
+    command: 'bun'
+    args: ['run', 'oxlint']
+    inputs:
+      - 'package.json'
+      - '.oxlintrc.json'
+      - 'crates/web/frontend/**/*.{ts,tsx,js,jsx}'
+      - '!**/node_modules/**'
+      - '!**/dist/**'
+      - '!**/frontend_old/**'
+    options:
+      cache: true
+      outputStyle: buffer-only-failure
+  biome:
+    description: 'biome check (frontend)'
+    deps: ['~:format']
+    command: 'bun'
+    args: ['run', 'biome']
+    inputs:
+      - 'biome.json'
+      - 'package.json'
+      - 'crates/web/frontend/**/*.{ts,tsx,js,jsx,json}'
+      - '!**/node_modules/**'
+      - '!**/dist/**'
+      - '!**/frontend_old/**'
+    options:
+      cache: true
+      outputStyle: buffer-only-failure
+  typecheck:
+    description: 'biome + frontend tsc --noEmit'
+    deps: ['~:format', '~:oxlint', '~:biome']
+    command: 'bun'
+    args: ['run', 'typecheck']
+    inputs:
+      - 'biome.json'
+      - 'package.json'
+      - 'crates/web/frontend/package.json'
+      - 'crates/web/frontend/tsconfig*.json'
+      - 'crates/web/frontend/src/**/*.{ts,tsx}'
+      - '!**/node_modules/**'
+      - '!**/dist/**'
+    options:
+      cache: true
+      outputStyle: buffer-only-failure
+  lint:
+    description: 'Workspace TS/JS gate: format + oxlint + biome + typecheck'
+    deps: ['~:format', '~:oxlint', '~:biome', '~:typecheck']
+    command: 'bash'
+    args: ['-c', ':']
+    options:
+      cache: true
       outputStyle: buffer-only-failure
   start:
     description: 'Start the Loco app (cargo run --features cli -- start)'

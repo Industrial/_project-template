@@ -25,13 +25,13 @@ server:
     fallback:
       enable: false
     static:
-      enable: true
-      must_exist: true
+      enable: false
+      must_exist: false
       precompressed: false
       folder:
         uri: "/"
-        path: "crates/web/frontend/dist/client"
-      fallback: "crates/web/frontend/dist/client/index.html"
+        path: "frontend/dist/client"
+      fallback: "frontend/dist/client/index.html"
 
 # Worker Configuration
 workers:

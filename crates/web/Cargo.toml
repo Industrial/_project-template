@@ -17,7 +17,6 @@ async-trait = { workspace = true }
 axum = { version = "0.8" }
 tracing = { version = "0.1" }
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
-regex = { version = "1.11" }
 migration = { workspace = true }
 sea-orm = { version = "2.0", features = [
   "sqlx-sqlite",
@@ -31,13 +30,7 @@ uuid = { workspace = true }
 ts-rs = { version = "12", features = ["chrono-impl", "serde-compat"] }
 include_dir = { version = "0.7" }
 axum-extra = { version = "0.10", features = ["form"] }
-
-domain-core = { workspace = true }
-domain-workspace = { workspace = true }
-domain-page = { workspace = true }
-domain-block = { workspace = true }
-domain-share = { workspace = true }
-domain-comment = { workspace = true }
+thiserror = { workspace = true }
 
 [features]
 default = []

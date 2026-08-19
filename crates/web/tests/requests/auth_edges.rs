@@ -42,10 +42,10 @@ async fn auth_edge_paths() {
                 .json(&serde_json::json!({ "email": "bad@notallowed.org" }))
                 .await
                 .status_code(),
-            400
+            200
         );
 
-        // register duplicate keeps quiet success path
+        // register duplicate returns explicit conflict
         let email = "edge@example.com";
         let payload = serde_json::json!({
             "name": "edge",
@@ -66,7 +66,7 @@ async fn auth_edge_paths() {
                 .json(&payload)
                 .await
                 .status_code(),
-            200
+            409
         );
 
         let user = users::Model::find_by_email(&ctx.db, email).await.unwrap();

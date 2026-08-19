@@ -1,9 +1,23 @@
 {
-	"name": "project-template",
-	"version": "0.0.0",
+	"name": "test-loco-webapp",
+	"version": "0.1.0",
 	"private": true,
+	"scripts": {
+		"format": "treefmt --config-file treefmt.toml",
+		"format:check": "treefmt --config-file treefmt.ci.toml",
+		"oxlint": "oxlint crates/web/frontend --deny-warnings",
+		"oxlint:fix": "oxlint crates/web/frontend --fix --deny-warnings",
+		"biome": "biome check crates/web/frontend --error-on-warnings",
+		"typecheck": "biome check crates/web/frontend --error-on-warnings && bun --cwd crates/web/frontend run typecheck",
+		"ci:format": "treefmt --config-file treefmt.ci.toml"
+	},
+	"engines": {
+		"node": ">=20.9.0",
+		"bun": ">=1.0.0"
+	},
 	"devDependencies": {
 		"openskills": "1.5.0",
+		"oxlint": "^1.0.0",
 		"prpm": "2.1.31"
 	}
 }

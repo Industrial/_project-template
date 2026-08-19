@@ -1,28 +1,27 @@
 #![allow(clippy::unused_async)]
-use super::common::{self, ListParams};
-use axum::http::StatusCode;
-use loco_rs::prelude::*;
-use sea_orm::QueryOrder;
 
-use crate::{
-    dtos::{
-        common::Page,
-        pages::{CreatePage, PageDto, UpdatePage},
-    },
-    models::{
-        _entities::pages::{ActiveModel, Column, Entity},
-        users::Model as UserModel,
-    },
-};
+use axum::http::StatusCode;
+use loco_rs::prelude::auth::{JWT, JWTWithUser};
+use loco_rs::prelude::*;
+use sea_orm::{ColumnTrait, QueryFilter, QueryOrder};
+
+use crate::controllers::common::{ListParams, db_ok, fetch_page, find_optional, not_found};
+use crate::dtos::common::Page;
+use crate::dtos::pages::{CreatePage, PageDto, UpdatePage};
+use crate::models::UserModel;
+use crate::models::pages::{ActiveModel, Column, Entity};
 
 #[debug_handler]
 async fn list(
-    _auth: auth::JWT,
+    _auth: JWT,
     State(ctx): State<AppContext>,
     Query(params): Query<ListParams>,
 ) -> Result<Json<Page<PageDto>>> {
-    let (items, total, page, per_page) =
-        common::fetch_page(&ctx.db, Entity::find().order_by_asc(Column::Id), params).await;
+    let mut query = Entity::find().order_by_asc(Column::Position);
+    if let Some(workspace_id) = params.workspace_id {
+        query = query.filter(Column::WorkspaceId.eq(workspace_id));
+    }
+    let (items, total, page, per_page) = fetch_page(&ctx.db, query, params).await;
     Ok(Json(Page {
         items: items.into_iter().map(PageDto::from).collect(),
         total,
@@ -33,19 +32,19 @@ async fn list(
 
 #[debug_handler]
 async fn get_one(
-    _auth: auth::JWT,
+    _auth: JWT,
     State(ctx): State<AppContext>,
     Path(id): Path<i64>,
 ) -> Result<Response> {
-    let Some(model) = common::find_optional(Entity::find_by_id(id).one(&ctx.db)).await else {
-        return Ok(common::not_found("page not found"));
+    let Some(model) = find_optional(Entity::find_by_id(id).one(&ctx.db)).await else {
+        return Ok(not_found("page not found"));
     };
     Ok(Json(PageDto::from(model)).into_response())
 }
 
 #[debug_handler]
 async fn create(
-    auth: auth::JWTWithUser<UserModel>,
+    auth: JWTWithUser<UserModel>,
     State(ctx): State<AppContext>,
     Json(params): Json<CreatePage>,
 ) -> Result<Response> {
@@ -54,45 +53,47 @@ async fn create(
         icon: Set(params.icon),
         position: Set(params.position),
         workspace_id: Set(params.workspace_id),
+        parent_page_id: Set(params.parent_page_id),
         user_id: Set(auth.user.id),
         ..Default::default()
     };
-    let item = common::db_ok(item.insert(&ctx.db)).await;
+    let item = db_ok(item.insert(&ctx.db)).await;
 
     Ok((StatusCode::CREATED, Json(PageDto::from(item))).into_response())
 }
 
 #[debug_handler]
 async fn update(
-    _auth: auth::JWT,
+    _auth: JWT,
     State(ctx): State<AppContext>,
     Path(id): Path<i64>,
     Json(params): Json<UpdatePage>,
 ) -> Result<Response> {
-    let Some(model) = common::find_optional(Entity::find_by_id(id).one(&ctx.db)).await else {
-        return Ok(common::not_found("page not found"));
+    let Some(model) = find_optional(Entity::find_by_id(id).one(&ctx.db)).await else {
+        return Ok(not_found("page not found"));
     };
 
     let mut item = model.into_active_model();
     item.title = Set(params.title);
     item.icon = Set(params.icon);
     item.position = Set(params.position);
-    let item = common::db_ok(item.update(&ctx.db)).await;
+    item.parent_page_id = Set(params.parent_page_id);
+    let item = db_ok(item.update(&ctx.db)).await;
 
     Ok(Json(PageDto::from(item)).into_response())
 }
 
 #[debug_handler]
 async fn remove(
-    _auth: auth::JWT,
+    _auth: JWT,
     State(ctx): State<AppContext>,
     Path(id): Path<i64>,
 ) -> Result<Response> {
-    let Some(model) = common::find_optional(Entity::find_by_id(id).one(&ctx.db)).await else {
-        return Ok(common::not_found("page not found"));
+    let Some(model) = find_optional(Entity::find_by_id(id).one(&ctx.db)).await else {
+        return Ok(not_found("page not found"));
     };
 
-    common::db_ok(model.into_active_model().delete(&ctx.db)).await;
+    db_ok(model.into_active_model().delete(&ctx.db)).await;
 
     Ok(StatusCode::NO_CONTENT.into_response())
 }

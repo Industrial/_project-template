@@ -124,7 +124,7 @@ in {
     RUSTC_WRAPPER = "sccache";
     # Serial moon avoids cargo target lock contention under hook execution.
     MOON_CONCURRENCY = "1";
-    MOON_TOOLCHAIN_FORCE_GLOBALS = "rust";
+    MOON_TOOLCHAIN_FORCE_GLOBALS = "1";
     # Match `cargo test` exit status when a crate has no tests (nextest defaults to failing with code 4).
     NEXTEST_NO_TESTS = "pass";
   };

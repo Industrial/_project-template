@@ -1,28 +1,27 @@
 #![allow(clippy::unused_async)]
-use super::common::{self, ListParams};
-use axum::http::StatusCode;
-use loco_rs::prelude::*;
-use sea_orm::QueryOrder;
 
-use crate::{
-    dtos::{
-        comments::{CommentDto, CreateComment, UpdateComment},
-        common::Page,
-    },
-    models::{
-        _entities::comments::{ActiveModel, Column, Entity},
-        users::Model as UserModel,
-    },
-};
+use axum::http::StatusCode;
+use loco_rs::prelude::auth::{JWT, JWTWithUser};
+use loco_rs::prelude::*;
+use sea_orm::{ColumnTrait, QueryFilter, QueryOrder};
+
+use crate::controllers::common::{ListParams, db_ok, fetch_page, find_optional, not_found};
+use crate::dtos::comments::{CommentDto, CreateComment, UpdateComment};
+use crate::dtos::common::Page;
+use crate::models::UserModel;
+use crate::models::comments::{ActiveModel, Column, Entity};
 
 #[debug_handler]
 async fn list(
-    _auth: auth::JWT,
+    _auth: JWT,
     State(ctx): State<AppContext>,
     Query(params): Query<ListParams>,
 ) -> Result<Json<Page<CommentDto>>> {
-    let (items, total, page, per_page) =
-        common::fetch_page(&ctx.db, Entity::find().order_by_asc(Column::Id), params).await;
+    let mut query = Entity::find().order_by_asc(Column::Id);
+    if let Some(page_id) = params.page_id {
+        query = query.filter(Column::PageId.eq(page_id));
+    }
+    let (items, total, page, per_page) = fetch_page(&ctx.db, query, params).await;
     Ok(Json(Page {
         items: items.into_iter().map(CommentDto::from).collect(),
         total,
@@ -33,19 +32,19 @@ async fn list(
 
 #[debug_handler]
 async fn get_one(
-    _auth: auth::JWT,
+    _auth: JWT,
     State(ctx): State<AppContext>,
     Path(id): Path<i64>,
 ) -> Result<Response> {
-    let Some(model) = common::find_optional(Entity::find_by_id(id).one(&ctx.db)).await else {
-        return Ok(common::not_found("comment not found"));
+    let Some(model) = find_optional(Entity::find_by_id(id).one(&ctx.db)).await else {
+        return Ok(not_found("comment not found"));
     };
     Ok(Json(CommentDto::from(model)).into_response())
 }
 
 #[debug_handler]
 async fn create(
-    auth: auth::JWTWithUser<UserModel>,
+    auth: JWTWithUser<UserModel>,
     State(ctx): State<AppContext>,
     Json(params): Json<CreateComment>,
 ) -> Result<Response> {
@@ -55,40 +54,40 @@ async fn create(
         user_id: Set(auth.user.id),
         ..Default::default()
     };
-    let item = common::db_ok(item.insert(&ctx.db)).await;
+    let item = db_ok(item.insert(&ctx.db)).await;
 
     Ok((StatusCode::CREATED, Json(CommentDto::from(item))).into_response())
 }
 
 #[debug_handler]
 async fn update(
-    _auth: auth::JWT,
+    _auth: JWT,
     State(ctx): State<AppContext>,
     Path(id): Path<i64>,
     Json(params): Json<UpdateComment>,
 ) -> Result<Response> {
-    let Some(model) = common::find_optional(Entity::find_by_id(id).one(&ctx.db)).await else {
-        return Ok(common::not_found("comment not found"));
+    let Some(model) = find_optional(Entity::find_by_id(id).one(&ctx.db)).await else {
+        return Ok(not_found("comment not found"));
     };
 
     let mut item = model.into_active_model();
     item.body = Set(params.body);
-    let item = common::db_ok(item.update(&ctx.db)).await;
+    let item = db_ok(item.update(&ctx.db)).await;
 
     Ok(Json(CommentDto::from(item)).into_response())
 }
 
 #[debug_handler]
 async fn remove(
-    _auth: auth::JWT,
+    _auth: JWT,
     State(ctx): State<AppContext>,
     Path(id): Path<i64>,
 ) -> Result<Response> {
-    let Some(model) = common::find_optional(Entity::find_by_id(id).one(&ctx.db)).await else {
-        return Ok(common::not_found("comment not found"));
+    let Some(model) = find_optional(Entity::find_by_id(id).one(&ctx.db)).await else {
+        return Ok(not_found("comment not found"));
     };
 
-    common::db_ok(model.into_active_model().delete(&ctx.db)).await;
+    db_ok(model.into_active_model().delete(&ctx.db)).await;
 
     Ok(StatusCode::NO_CONTENT.into_response())
 }

@@ -1,9 +1,10 @@
+use loco_rs::Result;
 #[allow(unused_imports)]
-use loco_rs::{cli::playground, prelude::*};
+use loco_rs::cli::playground;
 use test_loco_webapp::app::App;
 
 #[tokio::main]
-async fn main() -> loco_rs::Result<()> {
+async fn main() -> Result<()> {
     let _ctx = playground::<App>().await?;
 
     // let active_model: articles::ActiveModel = articles::ActiveModel {

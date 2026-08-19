@@ -1,23 +1,13 @@
-use crate::{
-    mailers::auth::AuthMailer,
-    models::{
-        _entities::users,
-        users::{LoginParams, RegisterParams},
-    },
-    views::auth::{CurrentResponse, LoginResponse},
-};
+use crate::controllers::common::conflict;
+use crate::mailers::auth::AuthMailer;
+use crate::models::UserModel;
+use crate::models::users::{LoginParams, RegisterParams};
+use crate::views::auth::{CurrentResponse, LoginResponse};
+use loco_rs::prelude::auth::JWT;
+use loco_rs::prelude::format::{empty_json, json};
 use loco_rs::prelude::*;
-use regex::Regex;
 use serde::{Deserialize, Serialize};
-use std::sync::OnceLock;
-
-pub static EMAIL_DOMAIN_RE: OnceLock<Regex> = OnceLock::new();
-
-fn get_allow_email_domain_re() -> &'static Regex {
-    EMAIL_DOMAIN_RE.get_or_init(|| {
-        Regex::new(r"@example\.com$|@gmail\.com$").expect("Failed to compile regex")
-    })
-}
+use tracing::{debug, info};
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ForgotParams {
@@ -47,11 +37,15 @@ async fn register(
     State(ctx): State<AppContext>,
     Json(params): Json<RegisterParams>,
 ) -> Result<Response> {
-    let res = users::Model::create_with_password(&ctx.db, &params).await;
-
-    let user = match res {
+    let user = match UserModel::create_with_password(&ctx.db, &params).await {
         Ok(user) => user,
-        Err(_) => return format::json(()),
+        Err(ModelError::EntityAlreadyExists) => {
+            return Ok(conflict(
+                "email_taken",
+                "An account with this email already exists. Log in or reset your password.",
+            ));
+        }
+        Err(err) => return Err(err.into()),
     };
 
     let user = user
@@ -61,22 +55,22 @@ async fn register(
 
     AuthMailer::send_welcome(&ctx, &user).await?;
 
-    format::json(())
+    json(())
 }
 
 /// Verify register user. if the user not verified his email, he can't login to
 /// the system.
 #[debug_handler]
 async fn verify(State(ctx): State<AppContext>, Path(token): Path<String>) -> Result<Response> {
-    let Ok(user) = users::Model::find_by_verification_token(&ctx.db, &token).await else {
+    let Ok(user) = UserModel::find_by_verification_token(&ctx.db, &token).await else {
         return unauthorized("invalid token");
     };
 
     // Token is cleared in `verified`, so a second hit yields 401 (invalid token).
     let user = user.into_active_model().verified(&ctx.db).await?;
-    tracing::info!(pid = user.pid.to_string(), "user verified");
+    info!(pid = user.pid.to_string(), "user verified");
 
-    format::json(())
+    json(())
 }
 
 /// In case the user forgot his password  this endpoints generate a forgot token
@@ -88,10 +82,10 @@ async fn forgot(
     State(ctx): State<AppContext>,
     Json(params): Json<ForgotParams>,
 ) -> Result<Response> {
-    let Ok(user) = users::Model::find_by_email(&ctx.db, &params.email).await else {
+    let Ok(user) = UserModel::find_by_email(&ctx.db, &params.email).await else {
         // we don't want to expose our users email. if the email is invalid we still
         // returning success to the caller
-        return format::json(());
+        return json(());
     };
 
     let user = user
@@ -101,31 +95,31 @@ async fn forgot(
 
     AuthMailer::forgot_password(&ctx, &user).await?;
 
-    format::json(())
+    json(())
 }
 
 /// reset user password by the given parameters
 #[debug_handler]
 async fn reset(State(ctx): State<AppContext>, Json(params): Json<ResetParams>) -> Result<Response> {
-    let Ok(user) = users::Model::find_by_reset_token(&ctx.db, &params.token).await else {
+    let Ok(user) = UserModel::find_by_reset_token(&ctx.db, &params.token).await else {
         // we don't want to expose our users email. if the email is invalid we still
         // returning success to the caller
-        tracing::info!("reset token not found");
+        info!("reset token not found");
 
-        return format::json(());
+        return json(());
     };
     user.into_active_model()
         .reset_password(&ctx.db, &params.password)
         .await?;
 
-    format::json(())
+    json(())
 }
 
 /// Creates a user login and returns a token
 #[debug_handler]
 async fn login(State(ctx): State<AppContext>, Json(params): Json<LoginParams>) -> Result<Response> {
-    let Ok(user) = users::Model::find_by_email(&ctx.db, &params.email).await else {
-        tracing::debug!(
+    let Ok(user) = UserModel::find_by_email(&ctx.db, &params.email).await else {
+        debug!(
             email = params.email,
             "login attempt with non-existent email"
         );
@@ -142,13 +136,13 @@ async fn login(State(ctx): State<AppContext>, Json(params): Json<LoginParams>) -
 
     let token = user.generate_jwt(&jwt_secret.secret, jwt_secret.expiration)?;
 
-    format::json(LoginResponse::new(&user, &token))
+    json(LoginResponse::new(&user, &token))
 }
 
 #[debug_handler]
-async fn current(auth: auth::JWT, State(ctx): State<AppContext>) -> Result<Response> {
-    let user = users::Model::find_by_pid(&ctx.db, &auth.claims.pid).await?;
-    format::json(CurrentResponse::new(&user))
+async fn current(auth: JWT, State(ctx): State<AppContext>) -> Result<Response> {
+    let user = UserModel::find_by_pid(&ctx.db, &auth.claims.pid).await?;
+    json(CurrentResponse::new(&user))
 }
 
 /// Magic link authentication provides a secure and passwordless way to log in to the application.
@@ -169,26 +163,17 @@ async fn magic_link(
     State(ctx): State<AppContext>,
     Json(params): Json<MagicLinkParams>,
 ) -> Result<Response> {
-    let email_regex = get_allow_email_domain_re();
-    if !email_regex.is_match(&params.email) {
-        tracing::debug!(
-            email = params.email,
-            "The provided email is invalid or does not match the allowed domains"
-        );
-        return bad_request("invalid request");
-    }
-
-    let Ok(user) = users::Model::find_by_email(&ctx.db, &params.email).await else {
+    let Ok(user) = UserModel::find_by_email(&ctx.db, &params.email).await else {
         // we don't want to expose our users email. if the email is invalid we still
         // returning success to the caller
-        tracing::debug!(email = params.email, "user not found by email");
-        return format::empty_json();
+        debug!(email = params.email, "user not found by email");
+        return empty_json();
     };
 
     let user = user.into_active_model().create_magic_link(&ctx.db).await?;
     AuthMailer::send_magic_link(&ctx, &user).await?;
 
-    format::empty_json()
+    empty_json()
 }
 
 /// Verifies a magic link token and authenticates the user.
@@ -196,7 +181,7 @@ async fn magic_link_verify(
     Path(token): Path<String>,
     State(ctx): State<AppContext>,
 ) -> Result<Response> {
-    let Ok(user) = users::Model::find_by_magic_token(&ctx.db, &token).await else {
+    let Ok(user) = UserModel::find_by_magic_token(&ctx.db, &token).await else {
         // we don't want to expose our users email. if the email is invalid we still
         // returning success to the caller
         return unauthorized("unauthorized!");
@@ -208,7 +193,7 @@ async fn magic_link_verify(
 
     let token = user.generate_jwt(&jwt_secret.secret, jwt_secret.expiration)?;
 
-    format::json(LoginResponse::new(&user, &token))
+    json(LoginResponse::new(&user, &token))
 }
 
 #[debug_handler]
@@ -216,16 +201,16 @@ async fn resend_verification_email(
     State(ctx): State<AppContext>,
     Json(params): Json<ResendVerificationParams>,
 ) -> Result<Response> {
-    let Ok(user) = users::Model::find_by_email(&ctx.db, &params.email).await else {
-        tracing::info!(
+    let Ok(user) = UserModel::find_by_email(&ctx.db, &params.email).await else {
+        info!(
             email = params.email,
             "User not found for resend verification"
         );
-        return format::json(());
+        return json(());
     };
 
     if user.email_verified_at.is_some() {
-        return format::json(());
+        return json(());
     }
 
     let user = user
@@ -234,9 +219,9 @@ async fn resend_verification_email(
         .await?;
 
     AuthMailer::send_welcome(&ctx, &user).await?;
-    tracing::info!(pid = user.pid.to_string(), "Verification email re-sent");
+    info!(pid = user.pid.to_string(), "Verification email re-sent");
 
-    format::json(())
+    json(())
 }
 
 pub fn routes() -> Routes {

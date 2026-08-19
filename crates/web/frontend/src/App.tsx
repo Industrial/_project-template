@@ -1,26 +1,17 @@
-import { Link, Outlet, useNavigate } from "react-router";
-import { clearToken, getToken } from "./auth/token";
+import { Title } from '@solidjs/meta'
+import { Loading } from 'solid-js'
 
-export function App() {
-	const navigate = useNavigate();
-	const isAuthenticated = getToken() !== null;
+import { Router } from './router'
 
-	function handleLogout() {
-		clearToken();
-		navigate("/login");
-	}
-
-	return (
-		<div>
-			<nav>
-				<Link to="/">Home</Link>
-				{isAuthenticated && (
-					<button type="button" onClick={handleLogout}>
-						Logout
-					</button>
-				)}
-			</nav>
-			<Outlet />
-		</div>
-	);
+export default function App() {
+  return (
+    <Router>
+      {(props) => (
+        <>
+          <Title>Notes</Title>
+          <Loading fallback={<main>Loading…</main>}>{props.children}</Loading>
+        </>
+      )}
+    </Router>
+  )
 }

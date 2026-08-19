@@ -5,21 +5,15 @@ Loco (Rust) Notion-style workspace app on SQLite.
 ## Stack
 
 - **Backend:** Loco 1.0 SaaS (JWT auth, Axum, SeaORM, SQLite)
-- **Frontend:** Vite React SSR (`crates/web/frontend/`) proxying `/api` → Loco `:5150`
-- **Crates:** many small domain crates + `web` + `migration`
+- **Frontend:** Solid 2.0 fullstack SSR (`crates/web/frontend/`) with Kobalte; server functions proxy to Loco `:5150`
+- **Crates:** `web` (Loco app) + `migration`
 
 ## Workspace crates
 
 | Crate | Role |
 |-------|------|
-| `crates/web` | Loco app, controllers, models, DTOs, Vite frontend |
+| `crates/web` | Loco app, controllers, models (one type per file), DTOs, Vite frontend |
 | `crates/migration` | SeaORM migrations |
-| `crates/domain-core` | Roles, block types, domain errors |
-| `crates/domain-workspace` | Workspace create/rename rules |
-| `crates/domain-page` | Nested page rules |
-| `crates/domain-block` | Block content validation |
-| `crates/domain-share` | ACL helpers |
-| `crates/domain-comment` | Comment validation |
 
 ## Run
 
@@ -27,11 +21,11 @@ Loco (Rust) Notion-style workspace app on SQLite.
 # API (from repo root) — http://localhost:5150
 cargo run -p test-loco-webapp --features cli -- start
 
-# Frontend SSR (separate terminal) — http://localhost:5174
+# Frontend SSR (separate terminal) — http://localhost:5173
 cd crates/web/frontend && bun install && bun run dev
 ```
 
-Open http://localhost:5174 — API at http://localhost:5150.
+Open http://localhost:5173 — API at http://localhost:5150.
 (`cargo loco` is optional; install with `cargo install loco-cli` if you prefer that UX.)
 
 ## Notion v0 resources
