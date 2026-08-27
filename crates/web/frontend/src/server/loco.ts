@@ -80,7 +80,7 @@ export async function locoFetch(
     }
   }
   const base = env.LOCO_API_URL.replace(/\/$/, '')
-  return fetch(`${base}${path}`, { ...init, headers })
+  return fetch(`${base}${path}`, { ...init, headers, cache: 'no-store' })
 }
 
 export async function locoJson<T>(

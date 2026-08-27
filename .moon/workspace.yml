@@ -21,6 +21,7 @@ projects:
   - 'crates/web'
   - 'crates/migration'
   - 'crates/web/frontend'
+  - 'crates/web/e2e'
 vcs:
   client: 'git'
   defaultBranch: 'main'

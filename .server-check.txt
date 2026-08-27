@@ -1,0 +1,4 @@
+===PORTS===
+(none)
+===PROCS===
+302198 bash -lc echo "===PORTS===" > /data/Code/rust/test-loco-webapp/.server-check.txt; ss -ltnp 2>/dev/null | grep -E ":5150|:3000|:5173" >> /data/Code/rust/test-loco-webapp/.server-check.txt || echo "(none)" >> /data/Code/rust/test-loco-webapp/.server-check.txt; echo "===PROCS===" >> /data/Code/rust/test-loco-webapp/.server-check.txt; pgrep -af "test_loco_webapp-cli|vite|start-e2e-stack" >> /data/Code/rust/test-loco-webapp/.server-check.txt || echo "(none)" >> /data/Code/rust/test-loco-webapp/.server-check.txt

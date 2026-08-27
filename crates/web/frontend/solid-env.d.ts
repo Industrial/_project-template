@@ -3,31 +3,27 @@
 // Keep this file (and the schema) inside your tsconfig "include".
 
 declare module 'virtual:env/client' {
-  type __Schema = typeof import('./env')['default']
-  type __Out<T> = T extends {
-    '~standard': { types?: { output: infer O } | undefined }
-  }
+  type __Schema = typeof import("./env")['default'];
+  type __Out<T> = T extends { '~standard': { types?: { output: infer O } | undefined } }
     ? O
-    : string
+    : string;
   const env: {
-    readonly VITE_APP_NAME: __Out<__Schema['client']['VITE_APP_NAME']>
-  }
-  export { env }
-  export default env
+    readonly "VITE_APP_NAME": __Out<__Schema["client"]["VITE_APP_NAME"]>;
+  };
+  export { env };
+  export default env;
 }
 
 declare module 'virtual:env/server' {
-  type __Schema = typeof import('./env')['default']
-  type __Out<T> = T extends {
-    '~standard': { types?: { output: infer O } | undefined }
-  }
+  type __Schema = typeof import("./env")['default'];
+  type __Out<T> = T extends { '~standard': { types?: { output: infer O } | undefined } }
     ? O
-    : string
+    : string;
   const env: {
-    readonly SESSION_SECRET: __Out<__Schema['server']['SESSION_SECRET']>
-    readonly LOCO_API_URL: __Out<__Schema['server']['LOCO_API_URL']>
-    readonly VITE_APP_NAME: __Out<__Schema['client']['VITE_APP_NAME']>
-  }
-  export { env }
-  export default env
+    readonly "SESSION_SECRET": __Out<__Schema["server"]["SESSION_SECRET"]>;
+    readonly "LOCO_API_URL": __Out<__Schema["server"]["LOCO_API_URL"]>;
+    readonly "VITE_APP_NAME": __Out<__Schema["client"]["VITE_APP_NAME"]>;
+  };
+  export { env };
+  export default env;
 }

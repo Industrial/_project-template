@@ -1,6 +1,7 @@
 import type { RouteDefinition, RouteProps } from '@solidjs/router'
 import { For, createMemo } from 'solid-js'
 
+import { PageHeader } from '../../../../components/layout/PageHeader'
 import { requireUser } from '../../../../lib/auth'
 import { FormError, FormSuccess, latestSubmission } from '../../../../lib/form'
 import { inviteMember, listMembers, readQuery } from '../../../../lib/notes'
@@ -21,40 +22,58 @@ export default function MembersSettings(
 
   return (
     <section>
-      <h1>Members</h1>
-      <p>
-        <a href={`/w/${props.params.workspaceId}/settings`}>Back to settings</a>
+      <PageHeader
+        title="Members"
+        description="Invite collaborators and manage workspace access."
+      />
+      <p class="mb-6">
+        <a href={`/w/${props.params.workspaceId}/settings`} class="link-accent">
+          Back to settings
+        </a>
       </p>
-      <ul>
-        <For each={members()} fallback={<li>No members yet</li>}>
-          {(m) => (
-            <li>
-              User #{m.user_id} — {m.role}
-            </li>
-          )}
-        </For>
-      </ul>
-      <form action={inviteMember} method="post">
+
+      <div class="card mb-6">
+        <h2 class="mb-3 text-sm font-semibold text-foreground">
+          Current members
+        </h2>
+        <ul class="divide-y divide-border">
+          <For
+            each={members()}
+            fallback={
+              <li class="py-2 text-sm text-muted-foreground">No members yet</li>
+            }
+          >
+            {(m) => (
+              <li class="flex items-center justify-between py-2 text-sm">
+                <span class="text-foreground">User #{m.user_id}</span>
+                <span class="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                  {m.role}
+                </span>
+              </li>
+            )}
+          </For>
+        </ul>
+      </div>
+
+      <form action={inviteMember} method="post" class="card stack max-w-lg">
+        <h2 class="text-sm font-semibold text-foreground">Invite member</h2>
         <input
           type="hidden"
           name="workspace_id"
           value={props.params.workspaceId}
         />
-        <p>
-          <label>
-            User ID <input type="number" name="user_id" required />
-          </label>
-        </p>
-        <p>
-          <label>
-            Role{' '}
-            <select name="role" value="viewer">
-              <option value="viewer">Viewer</option>
-              <option value="editor">Editor</option>
-              <option value="admin">Admin</option>
-            </select>
-          </label>
-        </p>
+        <label class="field-label">
+          User ID
+          <input type="number" name="user_id" required class="field-input" />
+        </label>
+        <label class="field-label">
+          Role
+          <select name="role" value="viewer" class="field-input">
+            <option value="viewer">Viewer</option>
+            <option value="editor">Editor</option>
+            <option value="admin">Admin</option>
+          </select>
+        </label>
         <FormError submission={submission} />
         <FormSuccess
           submission={submission}
@@ -69,9 +88,9 @@ export default function MembersSettings(
         >
           Member invited.
         </FormSuccess>
-        <p>
-          <button type="submit">Invite member</button>
-        </p>
+        <button type="submit" class="btn-primary">
+          Invite member
+        </button>
       </form>
     </section>
   )

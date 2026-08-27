@@ -58,7 +58,11 @@ export function FormError(props: {
 }) {
   return (
     <Show when={submissionError(props.submission())}>
-      {(message) => <p role="alert">{message()}</p>}
+      {(message) => (
+        <p role="alert" class="alert">
+          {message()}
+        </p>
+      )}
     </Show>
   )
 }
@@ -78,7 +82,7 @@ export function FormSuccess(props: {
         return props.when(sub.result)
       })()}
     >
-      <output>{props.children}</output>
+      <output class="alert-success">{props.children}</output>
     </Show>
   )
 }

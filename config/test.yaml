@@ -18,6 +18,8 @@ logger:
 server:
   # Port on which the server will listen. the server binding is 0.0.0.0:{PORT}
   port: 5150
+  # Binding for the server (which interface to bind to)
+  binding: 127.0.0.1
   # The UI hostname or IP address that mailers will point to.
   host: http://localhost
   # Out of the box middleware configuration. to disable middleware you can changed the `enable` field to `false` of comment the middleware block
@@ -80,7 +82,7 @@ database:
   # Minimum number of connections for a pool.
   min_connections: {{ get_env(name="DB_MIN_CONNECTIONS", default="1") }}
   # Maximum number of connections for a pool.
-  max_connections: {{ get_env(name="DB_MAX_CONNECTIONS", default="1") }}
+  max_connections: {{ get_env(name="DB_MAX_CONNECTIONS", default="5") }}
   # Run migration up when application loaded
   auto_migrate: true
   # Truncate database when application loaded. This is a dangerous operation, make sure that you using this flag only on dev environments or test mode

@@ -1,6 +1,7 @@
 import { Title } from '@solidjs/meta'
 import { Loading } from 'solid-js'
 
+import './styles/app.css'
 import { Router } from './router'
 
 export default function App() {

@@ -3,6 +3,10 @@
   pkgs,
   ...
 }: let
+  pkgs-playwright = import inputs.nixpkgs-playwright {system = pkgs.stdenv.hostPlatform.system;};
+  browsers = (builtins.fromJSON (builtins.readFile "${pkgs-playwright.playwright-driver}/browsers.json")).browsers;
+  chromium-rev = (builtins.head (builtins.filter (x: x.name == "chromium") browsers)).revision;
+
   # Moon from GitHub releases (x86_64-linux). See https://moonrepo.dev/docs/install
   moon = pkgs.stdenv.mkDerivation {
     pname = "moon-cli";
@@ -78,6 +82,8 @@ in {
   languages = {
     javascript = {
       enable = true;
+      # Pin Node 22 — Playwright 1.52 hangs under nodejs-slim-24 from the default toolchain.
+      package = pkgs.nodejs_22;
       bun = {
         enable = true;
       };
@@ -127,6 +133,33 @@ in {
     MOON_TOOLCHAIN_FORCE_GLOBALS = "1";
     # Match `cargo test` exit status when a crate has no tests (nextest defaults to failing with code 4).
     NEXTEST_NO_TESTS = "pass";
+    LD_LIBRARY_PATH = builtins.concatStringsSep ":" [
+      "${pkgs.stdenv.cc.cc.lib}/lib"
+      "${pkgs.glib.out}/lib"
+      "${pkgs.nss.out}/lib"
+      "${pkgs.nspr.out}/lib"
+      "${pkgs.dbus.lib}/lib"
+      "${pkgs.atk.out}/lib"
+      "${pkgs.at-spi2-atk.out}/lib"
+      "${pkgs.expat.out}/lib"
+      "${pkgs.at-spi2-core.out}/lib"
+      "${pkgs.xorg.libX11.out}/lib"
+      "${pkgs.xorg.libXcomposite.out}/lib"
+      "${pkgs.xorg.libXdamage.out}/lib"
+      "${pkgs.xorg.libXext.out}/lib"
+      "${pkgs.xorg.libXfixes.out}/lib"
+      "${pkgs.xorg.libXrandr.out}/lib"
+      "${pkgs.mesa.out}/lib"
+      "${pkgs.xorg.libxcb.out}/lib"
+      "${pkgs.libxkbcommon.out}/lib"
+      "${pkgs.systemd}/lib"
+      "${pkgs.alsa-lib.out}/lib"
+    ];
+    PLAYWRIGHT_BROWSERS_PATH = "${pkgs-playwright.playwright.browsers}";
+    PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS = true;
+    PLAYWRIGHT_NODEJS_PATH = "${pkgs.nodejs_22}/bin/node";
+    PLAYWRIGHT_LAUNCH_OPTIONS_EXECUTABLE_PATH = "${pkgs-playwright.playwright.browsers}/chromium-${chromium-rev}/chrome-linux/chrome";
+    PLAYWRIGHT_CHROMIUM_USE_HEADLESS_SHELL = "0";
   };
 
   # Development packages
@@ -175,12 +208,42 @@ in {
 
     # jq — JSON CLI for shell hooks and automation scripts
     jq
+    sqlite
+    nodejs_22
     # Native libs for uv-installed wheels (Serena / transitive deps) on NixOS
     zlib
     pkgs.stdenv.cc.cc.lib
   ];
 
   scripts = {
+    intro = {
+      exec = ''
+        playwrightInstalledVersion=""
+        for pkg in crates/web/e2e/package.json; do
+          if [ -f "$pkg" ]; then
+            version=$(grep -o '"@playwright/test":\s*"[^"]*"' "$pkg" 2>/dev/null | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+' | head -1)
+            if [ -n "$version" ]; then
+              playwrightInstalledVersion="$version"
+              break
+            fi
+          fi
+        done
+
+        if [ -z "$playwrightInstalledVersion" ]; then
+          playwrightInstalledVersion="not found"
+        fi
+
+        echo "❄️  Playwright nix version: ${pkgs-playwright.playwright.version}"
+        echo "📦 Playwright bun version: $playwrightInstalledVersion"
+
+        if [ "$playwrightInstalledVersion" != "not found" ] && [ "${pkgs-playwright.playwright.version}" != "$playwrightInstalledVersion" ]; then
+          echo "⚠️  Playwright versions in nix (devenv.yaml) and bun (package.json) differ — align them."
+        else
+          echo "✅ Playwright versions in nix and bun are compatible"
+        fi
+      '';
+    };
+
     moon-sync = {
       exec = ''
         moon sync
@@ -205,6 +268,8 @@ in {
   enterShell = ''
     mkdir -p "$DEVENV_ROOT/tmp"
     export TMPDIR="$DEVENV_ROOT/tmp"
+
+    intro
 
     moon-sync
 

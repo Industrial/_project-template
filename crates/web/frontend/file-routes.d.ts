@@ -57,6 +57,12 @@ declare module "virtual:file-routes" {
       $$route?: undefined;
     },
     {
+      path: "/register";
+      page: true;
+      $component: FileRouteLazyRef<typeof import("./src/routes/register")>;
+      $$route?: undefined;
+    },
+    {
       path: "/reset-password";
       page: true;
       $component: FileRouteLazyRef<typeof import("./src/routes/reset-password")>;
@@ -103,12 +109,6 @@ declare module "virtual:file-routes" {
       page: true;
       $component: FileRouteLazyRef<typeof import("./src/routes/w/[workspaceId]/settings/members")>;
       $$route: FileRouteEagerRef<typeof import("./src/routes/w/[workspaceId]/settings/members")>;
-    },
-    {
-      path: "/register";
-      page: true;
-      $component: FileRouteLazyRef<typeof import("./src/routes/register")>;
-      $$route?: undefined;
     }
   ];
   export default routes;

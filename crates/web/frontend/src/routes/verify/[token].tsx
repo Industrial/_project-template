@@ -2,6 +2,7 @@ import { Title } from '@solidjs/meta'
 import type { RouteDefinition, RouteProps } from '@solidjs/router'
 import { Show, createMemo } from 'solid-js'
 
+import { AuthPage } from '../../components/layout/AuthPage'
 import { verifyEmail } from '../../lib/auth'
 import { readQuery } from '../../lib/query'
 
@@ -15,17 +16,23 @@ export default function Verify(props: RouteProps<'/verify/:token'>) {
   )
 
   return (
-    <main>
+    <AuthPage title="Email verification">
       <Title>Email verification</Title>
-      <h1>Email verification</h1>
       <Show
         when={result().ok}
-        fallback={<p role="alert">Invalid or expired verification link.</p>}
+        fallback={
+          <p role="alert" class="alert mt-4">
+            Invalid or expired verification link.
+          </p>
+        }
       >
-        <output>
-          Email verified. <a href="/login">Log in</a>
+        <output class="alert-success mt-4">
+          Email verified.{' '}
+          <a href="/login" class="link-accent">
+            Log in
+          </a>
         </output>
       </Show>
-    </main>
+    </AuthPage>
   )
 }

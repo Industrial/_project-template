@@ -1,0 +1,37 @@
+# https://moonrepo.dev/docs/config/project
+id: 'e2e'
+language: 'typescript'
+layer: 'application'
+tasks:
+  install:
+    description: 'Install e2e deps (Chromium from Nix via devenv)'
+    command: 'bash'
+    args:
+      - '-lc'
+      - 'bun install && chmod +x scripts/start-e2e-stack.sh'
+    inputs:
+      - 'package.json'
+    options:
+      cache: false
+      outputStyle: buffer-only-failure
+  # Named `e2e` (not `test`) so workspace `:test` / pre-commit stay unit/integration-only.
+  e2e:
+    description: 'Run Playwright e2e suite (BDD tree)'
+    deps: ['web:build', 'frontend:build', '~:install']
+    command: 'bash'
+    args:
+      - '-lc'
+      - 'node_bin="${PLAYWRIGHT_NODEJS_PATH:-$(command -v node)}"; "$node_bin" ./node_modules/@playwright/test/cli.js test'
+    inputs:
+      - 'package.json'
+      - 'playwright.config.ts'
+      - 'fixtures/**/*'
+      - 'support/**/*'
+      - 'pages/**/*'
+      - 'tests/**/*'
+      - 'scripts/**/*'
+    env:
+      CI: 'true'
+    options:
+      cache: false
+      outputStyle: stream

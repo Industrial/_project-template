@@ -52,7 +52,9 @@ impl AuthMailer {
                 locals: json!({
                   "name": user.name,
                   "resetToken": user.reset_token,
-                  "host": ctx.config.server.full_url()
+                  "host": ctx.config.server.full_url(),
+                  "frontendHost": std::env::var("FRONTEND_URL")
+                      .unwrap_or_else(|_| "http://localhost:3000".to_string()),
                 }),
                 ..Default::default()
             },

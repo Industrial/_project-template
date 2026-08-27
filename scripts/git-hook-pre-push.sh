@@ -14,13 +14,13 @@ export MOON_TOOLCHAIN_FORCE_GLOBALS="${MOON_TOOLCHAIN_FORCE_GLOBALS:-1}"
 export NEXTEST_NO_TESTS="${NEXTEST_NO_TESTS:-pass}"
 
 run_moon() {
-    moon run :ci-format :check :clippy :test :build :audit :docs :check-docs :bench :coverage
+    moon run :ci-format :check :clippy :test :build :audit :docs :check-docs :bench :coverage e2e:e2e
 }
 
 if command -v moon >/dev/null 2>&1; then
     run_moon
 elif command -v devenv >/dev/null 2>&1; then
-    devenv shell -- bash -lc 'moon run :ci-format :check :clippy :test :build :audit :docs :check-docs :bench :coverage'
+    devenv shell -- bash -lc 'moon run :ci-format :check :clippy :test :build :audit :docs :check-docs :bench :coverage e2e:e2e'
 else
     echo "git-hook-pre-push: neither moon nor devenv found on PATH" >&2
     exit 127

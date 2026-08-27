@@ -1,5 +1,5 @@
 import { action, query } from '@solidjs/router'
-import { redirect } from '@solidjs/web'
+import { redirect, reload, respond } from '@solidjs/web'
 
 import type { BlockDto } from '../bindings/BlockDto'
 import type { CommentDto } from '../bindings/CommentDto'
@@ -90,7 +90,9 @@ export const createPage = action(async (formData: FormData) => {
         parent_page_id: null,
       }),
     })
-    throw redirect(`/w/${workspace_id}/p/${page.id}`)
+    return redirect(`/w/${workspace_id}/p/${page.id}`, {
+      revalidate: listPages.keyFor(workspace_id),
+    })
   } catch (err) {
     if (err instanceof LocoError) {
       return { error: err.message }
@@ -113,7 +115,9 @@ export const updatePage = action(async (id: number, formData: FormData) => {
         parent_page_id: current.parent_page_id,
       }),
     })
-    return { ok: true as const }
+    return redirect(`/w/${current.workspace_id}/p/${id}`, {
+      revalidate: [getPage.keyFor(id), listPages.keyFor(current.workspace_id)],
+    })
   } catch (err) {
     return actionError(err)
   }
@@ -128,7 +132,10 @@ export const updateWorkspace = action(
         method: 'PUT',
         body: JSON.stringify({ name }),
       })
-      return { ok: true as const }
+      return respond(
+        { ok: true as const },
+        { revalidate: [getWorkspace.keyFor(id), listWorkspaces.key] },
+      )
     } catch (err) {
       return actionError(err)
     }
@@ -145,7 +152,10 @@ export const inviteMember = action(async (formData: FormData) => {
       method: 'POST',
       body: JSON.stringify({ workspace_id, user_id, role }),
     })
-    return { ok: true as const }
+    return respond(
+      { ok: true as const },
+      { revalidate: listMembers.keyFor(workspace_id) },
+    )
   } catch (err) {
     return actionError(err)
   }
@@ -168,9 +178,14 @@ export const addBlock = action(async (pageId: number) => {
         content: { text: '' },
       }),
     })
-    return { ok: true as const }
+    return reload({
+      revalidate: [listBlocks.key, getPage.keyFor(pageId)],
+    })
   } catch (err) {
-    return actionError(err)
+    if (err instanceof LocoError) {
+      return { error: err.message }
+    }
+    throw err
   }
 })
 
@@ -193,7 +208,9 @@ export const updateBlock = action(async (id: number, formData: FormData) => {
         content: text === null ? current.content : { text: String(text) },
       }),
     })
-    return { ok: true as const }
+    return reload({
+      revalidate: [listBlocks.key, getPage.keyFor(current.page_id)],
+    })
   } catch (err) {
     return actionError(err)
   }
@@ -202,8 +219,11 @@ export const updateBlock = action(async (id: number, formData: FormData) => {
 export const removeBlock = action(async (id: number) => {
   'use server'
   try {
+    const current = await locoJson<BlockDto>(`/api/blocks/${id}`)
     await locoJson(`/api/blocks/${id}`, { method: 'DELETE' })
-    return { ok: true as const }
+    return reload({
+      revalidate: [listBlocks.key, getPage.keyFor(current.page_id)],
+    })
   } catch (err) {
     return actionError(err)
   }
@@ -217,7 +237,9 @@ export const addComment = action(async (pageId: number, formData: FormData) => {
       method: 'POST',
       body: JSON.stringify({ body, page_id: pageId }),
     })
-    return { ok: true as const }
+    return reload({
+      revalidate: [listComments.key, getPage.keyFor(pageId)],
+    })
   } catch (err) {
     return actionError(err)
   }
@@ -226,8 +248,11 @@ export const addComment = action(async (pageId: number, formData: FormData) => {
 export const removeComment = action(async (id: number) => {
   'use server'
   try {
+    const current = await locoJson<CommentDto>(`/api/comments/${id}`)
     await locoJson(`/api/comments/${id}`, { method: 'DELETE' })
-    return { ok: true as const }
+    return reload({
+      revalidate: [listComments.key, getPage.keyFor(current.page_id)],
+    })
   } catch (err) {
     return actionError(err)
   }
@@ -242,7 +267,9 @@ export const addShare = action(async (pageId: number, formData: FormData) => {
       method: 'POST',
       body: JSON.stringify({ permission, page_id: pageId, user_id }),
     })
-    return { ok: true as const }
+    return reload({
+      revalidate: [listShares.key, getPage.keyFor(pageId)],
+    })
   } catch (err) {
     return actionError(err)
   }
@@ -251,8 +278,11 @@ export const addShare = action(async (pageId: number, formData: FormData) => {
 export const removeShare = action(async (id: number) => {
   'use server'
   try {
+    const current = await locoJson<PageShareDto>(`/api/page_shares/${id}`)
     await locoJson(`/api/page_shares/${id}`, { method: 'DELETE' })
-    return { ok: true as const }
+    return reload({
+      revalidate: [listShares.key, getPage.keyFor(current.page_id)],
+    })
   } catch (err) {
     return actionError(err)
   }

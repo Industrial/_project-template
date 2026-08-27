@@ -1,3 +1,3 @@
 Reset your password with this link:
 
-{{host}}/reset#{{resetToken}}
+{{frontendHost}}/reset-password?token={{resetToken}}

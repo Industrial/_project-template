@@ -22,7 +22,7 @@ if (secrets.length === 0) {
 const cookie = createCookie('session', {
   secrets,
   httpOnly: true,
-  secure: true,
+  secure: (process.env.FRONTEND_URL ?? '').startsWith('https://'),
   sameSite: 'Lax',
   maxAge: MAX_AGE,
 })

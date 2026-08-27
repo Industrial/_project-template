@@ -1,3 +1,5 @@
+!.maestro/missions/*.md
+!.maestro/missions/.gitkeep
 **/*.rs.bk
 *.db
 *.info
@@ -6,6 +8,7 @@
 *.ntvs*
 *.sln
 *.sqlite
+*.sqlite*
 *.suo
 *.sw?
 *.swo
@@ -16,7 +19,6 @@
 .devenv*
 .direnv
 .direnv
-.moon/cache/
 .drift/**/.backups/
 .drift/cache/
 .drift/call-graph/
@@ -35,21 +37,30 @@
 .env.local
 .idea
 .idea/
+.maestro/evidence/
+.maestro/missions/*
+.maestro/runs/
+.maestro/sessions/
+.maestro/tasks/local-history/
+.moon/cache/
 .pre-commit-config.yaml
 .vscode
 .vscode/
 /.roam/
 /.serena/
 /.tmp
-/tmp/
 /data/
 /target/
+/tmp/
 Cargo.lock
 Thumbs.db
 charts/
 config.json
 config.toml
 config.yaml
+crates/web/e2e/node_modules/
+crates/web/e2e/playwright-report/
+crates/web/e2e/test-results/
 dev-debug.log
 devenv.local.nix
 devenv.local.nix
@@ -59,12 +70,3 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-
-# Maestro runtime state
-.maestro/missions/*
-!.maestro/missions/*.md
-!.maestro/missions/.gitkeep
-.maestro/sessions/
-.maestro/tasks/local-history/
-.maestro/evidence/
-.maestro/runs/

@@ -1,6 +1,7 @@
 import type { RouteDefinition, RouteProps } from '@solidjs/router'
 import { createMemo } from 'solid-js'
 
+import { PageHeader } from '../../../../components/layout/PageHeader'
 import { requireUser } from '../../../../lib/auth'
 import { FormError, FormSuccess, latestSubmission } from '../../../../lib/form'
 import { getWorkspace, readQuery, updateWorkspace } from '../../../../lib/notes'
@@ -21,14 +22,25 @@ export default function WorkspaceSettings(
 
   return (
     <section>
-      <h1>Workspace settings</h1>
-      <form action={updateWorkspace.with(wsId())} method="post">
-        <p>
-          <label>
-            Name{' '}
-            <input type="text" name="name" value={workspace().name} required />
-          </label>
-        </p>
+      <PageHeader
+        title="Workspace settings"
+        description="Manage your workspace name and members."
+      />
+      <form
+        action={updateWorkspace.with(wsId())}
+        method="post"
+        class="card stack max-w-lg"
+      >
+        <label class="field-label">
+          Name
+          <input
+            type="text"
+            name="name"
+            value={workspace().name}
+            required
+            class="field-input"
+          />
+        </label>
         <FormError submission={submission} />
         <FormSuccess
           submission={submission}
@@ -43,12 +55,15 @@ export default function WorkspaceSettings(
         >
           Saved.
         </FormSuccess>
-        <p>
-          <button type="submit">Save</button>
-        </p>
+        <button type="submit" class="btn-primary">
+          Save
+        </button>
       </form>
-      <p>
-        <a href={`/w/${props.params.workspaceId}/settings/members`}>
+      <p class="mt-6">
+        <a
+          href={`/w/${props.params.workspaceId}/settings/members`}
+          class="link-accent"
+        >
           Manage members
         </a>
       </p>

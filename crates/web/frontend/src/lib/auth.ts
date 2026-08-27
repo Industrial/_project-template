@@ -3,6 +3,7 @@ import { redirect } from '@solidjs/web'
 
 import { LocoError, locoJson } from '../server/loco'
 import { clearSession, getSession, setSession } from '../server/session'
+import { listWorkspaces } from './notes'
 
 function loginErrorMessage(err: LocoError): string {
   if (err.status === 401) {
@@ -19,6 +20,14 @@ function registerErrorMessage(err: LocoError): {
     return { error: err.message, code: 'email_taken' }
   }
   return { error: err.message }
+}
+
+function appUrl(path: string): string {
+  const base = (process.env.FRONTEND_URL ?? 'http://127.0.0.1:3000').replace(
+    /\/$/,
+    '',
+  )
+  return `${base}${path.startsWith('/') ? path : `/${path}`}`
 }
 
 export type CurrentUser = {
@@ -94,13 +103,17 @@ export const login = action(async (formData: FormData) => {
     }
     throw err
   }
-  throw redirect(await firstWorkspacePath(token))
+  return redirect(appUrl(await firstWorkspacePath(token)), {
+    revalidate: [getCurrentUser.key, requireUser.key, listWorkspaces.key],
+  })
 })
 
 export const logout = action(async () => {
   'use server'
   await clearSession()
-  throw redirect('/login')
+  return redirect(appUrl('/login'), {
+    revalidate: [getCurrentUser.key, requireUser.key, listWorkspaces.key],
+  })
 })
 
 export const register = action(async (formData: FormData) => {
@@ -123,7 +136,7 @@ export const register = action(async (formData: FormData) => {
     }
     throw err
   }
-  throw redirect('/login?registered=1')
+  return redirect(appUrl('/login?registered=1'))
 })
 
 export const forgotPassword = action(async (formData: FormData) => {

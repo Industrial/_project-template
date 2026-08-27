@@ -1,6 +1,7 @@
 import type { RouteDefinition, RouteProps } from '@solidjs/router'
 import { For, Show, createMemo } from 'solid-js'
 
+import { PageHeader } from '../../../components/layout/PageHeader'
 import { requireUser } from '../../../lib/auth'
 import { readQuery, getWorkspace, listPages } from '../../../lib/notes'
 
@@ -23,30 +24,43 @@ export default function WorkspaceHome(props: RouteProps<'/w/:workspaceId'>) {
 
   return (
     <section>
-      <h1>{workspace().name}</h1>
-      <p>Pick a page from the sidebar or create a new one.</p>
+      <PageHeader
+        title={workspace().name}
+        description="Pick a page from the sidebar or create a new one."
+      />
       <Show
         when={recent().length > 0}
         fallback={
-          <p>
-            <a href={`/w/${props.params.workspaceId}/p/new`}>
+          <div class="card text-center">
+            <p class="text-sm text-muted-foreground">No pages yet.</p>
+            <a
+              href={`/w/${props.params.workspaceId}/p/new`}
+              class="btn-primary mt-4 inline-flex"
+              onClick={(event) => {
+                event.preventDefault()
+                window.location.assign(`/w/${props.params.workspaceId}/p/new`)
+              }}
+            >
               Create your first page
             </a>
-          </p>
+          </div>
         }
       >
-        <ul>
+        <div class="grid gap-3 sm:grid-cols-2">
           <For each={recent()}>
             {(page) => (
-              <li>
-                <a href={`/w/${props.params.workspaceId}/p/${page.id}`}>
+              <a
+                href={`/w/${props.params.workspaceId}/p/${page.id}`}
+                class="page-link-card"
+              >
+                <p class="font-medium text-foreground">
                   {page.icon ? `${page.icon} ` : ''}
                   {page.title || 'Untitled'}
-                </a>
-              </li>
+                </p>
+              </a>
             )}
           </For>
-        </ul>
+        </div>
       </Show>
     </section>
   )

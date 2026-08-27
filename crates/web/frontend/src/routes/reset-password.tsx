@@ -1,5 +1,7 @@
 import { useSearchParams } from '@solidjs/router'
 import { Show } from 'solid-js'
+
+import { AuthPage } from '../components/layout/AuthPage'
 import { resetPassword } from '../lib/auth'
 import { FormError, FormSuccess, latestSubmission } from '../lib/form'
 
@@ -9,19 +11,24 @@ export default function ResetPassword() {
   const hasToken = () => Boolean(params.token)
 
   return (
-    <main>
-      <h1>New password</h1>
+    <AuthPage title="New password">
       <Show when={!hasToken()}>
-        <p role="alert">Missing or invalid reset link. Request a new one.</p>
-      </Show>
-      <form action={resetPassword} method="post">
-        <input type="hidden" name="token" value={params.token ?? ''} />
-        <p>
-          <label>
-            New password{' '}
-            <input type="password" name="password" minlength={8} required />
-          </label>
+        <p role="alert" class="alert mt-4">
+          Missing or invalid reset link. Request a new one.
         </p>
+      </Show>
+      <form action={resetPassword} method="post" class="mt-6 space-y-4">
+        <input type="hidden" name="token" value={params.token ?? ''} />
+        <label class="block text-sm font-medium text-foreground">
+          New password
+          <input
+            type="password"
+            name="password"
+            minlength={8}
+            required
+            class="auth-input"
+          />
+        </label>
         <FormError submission={submission} />
         <FormSuccess
           submission={submission}
@@ -36,15 +43,15 @@ export default function ResetPassword() {
         >
           Password updated. You can log in now.
         </FormSuccess>
-        <p>
-          <button type="submit" disabled={!hasToken()}>
-            Set password
-          </button>
-        </p>
+        <button type="submit" class="auth-button" disabled={!hasToken()}>
+          Set password
+        </button>
       </form>
-      <p>
-        <a href="/login">Back to login</a>
+      <p class="mt-6 text-center text-sm text-muted-foreground">
+        <a href="/login" class="link-accent">
+          Back to login
+        </a>
       </p>
-    </main>
+    </AuthPage>
   )
 }
