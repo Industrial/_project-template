@@ -20,3 +20,10 @@ async-trait = { version = "0.1" }
 validator = { version = "0.20" }
 
 migration = { path = "crates/migration" }
+
+# blaze runs proc macros as sandboxed WebAssembly so it can cache what they
+# expand to; `ouroboros_macro` does not build that way. Expanding it natively is
+# the narrow fix — do not add a `version` key here, blaze would then download
+# and run its own release instead of the Nix-pinned one.
+[workspace.metadata.blaze]
+native-proc-macros = ["ouroboros_macro"]
