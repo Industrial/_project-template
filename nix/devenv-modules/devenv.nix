@@ -2,6 +2,8 @@
 # Only the modules this repo references are here. Namespace: local.features.*
 {
   imports = [
+    ./with-devenv.nix
+    ./no-hooks-on-shell-entry.nix
     ./features/dotenv.nix
     ./features/env-python-ld.nix
     ./features/git-hooks-moon.nix
