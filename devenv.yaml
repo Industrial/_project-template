@@ -1,8 +1,8 @@
 # Shared input defaults (nixpkgs, rust-overlay, git-hooks, nixpkgs-python, …)
-# live in `.cursor/nix/devenv.yaml`. Project-only pins stay here.
+# live in `nix/devenv-modules/devenv.yaml`. Project-only pins stay here.
 imports:
-  - ./.cursor/nix
-# claude-code is unfree; permit it explicitly (cursor.features.program-claude-code).
+  - ./nix/devenv-modules
+# claude-code is unfree; permit it explicitly (local.features.program-claude-code).
 nixpkgs:
   permittedUnfreePackages:
     - claude-code
