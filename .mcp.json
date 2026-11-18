@@ -30,24 +30,17 @@
 		},
 		"lean-ctx": {
 			"type": "stdio",
-			"command": "./scripts/lean-ctx-mcp-wrapper.sh",
+			"command": "lean-ctx",
 			"args": [],
 			"disabled": false,
 			"description": "lean-ctx MCP (context compression; https://github.com/yvgude/lean-ctx)"
 		},
-		"serena": {
-			"type": "stdio",
-			"command": "./scripts/serena-mcp-wrapper.sh",
-			"args": [],
-			"disabled": false,
-			"description": "Serena MCP semantic editing/navigation. Prefer replace_regex, replace_symbol_body, insert_before_symbol, insert_after_symbol, and create_text_file for writes before native edit tools; do not use execute_shell_command as a write substitute."
-		},
 		"roam-code": {
 			"type": "stdio",
-			"command": "./scripts/roam-mcp-wrapper.sh",
-			"args": [],
+			"command": "roam",
+			"args": ["mcp"],
 			"disabled": false,
-			"description": "roam-code MCP via devenv (`roam mcp` + fastmcp)"
+			"description": "roam-code MCP from the system profile (`roam mcp` + fastmcp)"
 		},
 		"playwright": {
 			"type": "stdio",

@@ -13,8 +13,6 @@
   # rust-analyzer, clippy, rustfmt and the cargo-* helpers are still cargo's.
   local.features.program-blaze.enable = true;
   local.features.program-moon.enable = true;
-  local.features.program-lean-ctx.enable = true;
-  local.features.program-roam-code.enable = true;
   local.features.dotenv.enable = true;
   local.features.packages-base.enable = true;
   local.features.packages-rust-dev.enable = true;
@@ -25,12 +23,7 @@
   # Agent harness — the `.cursor` toolchain that `.claude` agents/skills and
   # `.mcp.json` expect on PATH (mirrors idclear/monorepo). Paperclip stays
   # monorepo-only: it needs its own Postgres and process supervision.
-  local.features.program-claude-code.enable = true;
-  local.features.program-maestro.enable = true;
   local.features.program-assay.enable = true;
-  local.features.program-context7.enable = true;
-  local.features.program-omniroute.enable = true;
-  local.features.program-hermes.enable = true;
 
   local.features.languages-rust = {
     enable = true;
