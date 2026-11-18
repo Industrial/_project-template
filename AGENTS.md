@@ -22,7 +22,7 @@ moon run :audit :coverage :docs :check-docs
 ### Rust goes through blaze
 
 [blaze](https://ix.dev/blaze) is the default Rust build command here, pinned by
-`cursor.features.program-blaze` in `devenv.nix`. It keeps the workspace
+`local.features.program-blaze` in `devenv.nix`. It keeps the workspace
 compiled in a per-user daemon and rebuilds only what changed, so `build`,
 `check`, `run` and `test` are roughly an order of magnitude faster than cargo on
 an incremental edit. Use `blaze` wherever you would have typed `cargo`, for

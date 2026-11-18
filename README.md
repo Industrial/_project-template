@@ -4,19 +4,11 @@ Rust + Bun/TypeScript workspace template with Nix (devenv), moon tasks, treefmt,
 
 ---
 
-## Clone (with submodules)
-
-This repo uses git submodules under `.cursor/` (`agency-agents`, `microsoft-rust-training`). Clone with submodules in one go:
+## Clone
 
 ```bash
-git clone --recurse-submodules <repo-url>
+git clone <repo-url>
 cd <repo>
-```
-
-If you already cloned without submodules, init and update them:
-
-```bash
-git submodule update --init --recursive
 ```
 
 ---
@@ -136,11 +128,10 @@ Add the Cachix auth token as a repository secret (`CACHIX_AUTH_TOKEN`) if you wa
 ### 1. Clone the repo
 
 ```bash
-git clone --recurse-submodules <repo-url>
+git clone <repo-url>
 cd <repo>
 ```
 
-- `.cursor/agency-agents` and `.cursor/microsoft-rust-training` are **git submodules**; `--recurse-submodules` pulls them. Without it, run `git submodule update --init --recursive` later.
 
 ### 2. Enter the dev shell (first time and daily)
 
