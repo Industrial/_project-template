@@ -65,6 +65,17 @@
 
   # Project-only shell wiring (shared features handle moon-sync, prek install).
   enterShell = ''
+    # Keep build temporaries off tmpfs, which is RAM. Unset, TMPDIR defaults to
+    # /tmp — a 2.0 GB tmpfs on this box, found 90% full — and a Rust build
+    # broad enough to write past it dies with `No space left on device
+    # (os error 28)`, which reads like a code defect and is not one.
+    #
+    # Exported here rather than in `env` because devenv clears TMPDIR after
+    # applying `env`. Kept OUTSIDE the repository because a path inside the
+    # tree inherits the repo's rustfmt.toml and breaks any test that formats
+    # generated code in a temporary directory.
+    export TMPDIR="$HOME/.cache/_project-template/tmp"
+    mkdir -p "$TMPDIR"
     # Hermes: project-local home + seed templates (never overwrite secrets).
     export HERMES_HOME="$PWD/.hermes"
     mkdir -p "$HERMES_HOME"
