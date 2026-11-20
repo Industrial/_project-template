@@ -1,237 +1,113 @@
 # Project template
 
-Rust + Bun/TypeScript workspace template with Nix (devenv), moon tasks, treefmt, cargo-deny, prek git hooks, and optional Cachix.
+A Rust workspace to start new projects from: Nix (devenv) for the toolchain,
+blaze for the inner loop, moon for the gates, and GitHub Actions running the
+same gates in CI.
 
----
-
-## Clone
-
-```bash
-git clone <repo-url>
-cd <repo>
-```
-
----
-
-## Overview
-
-- **Runtimes:** Rust (stable), JavaScript/TypeScript (Bun).
-- **Environment:** Nix via [devenv](https://devenv.sh); reproducible toolchain and scripts.
-- **Tasks:** [moon](https://moonrepo.dev) for format, check, lint, build, test, docs, audit, coverage, etc.
-- **Git hooks:** [prek](https://github.com/j178/prek) (pre-commit–compatible): pre-push runs the full moon pipeline; commit-msg enforces conventional commits (commitizen).
-- **Formatting:** [treefmt](https://github.com/numtide/treefmt) over Rust, Nix, shell, JS/TS, YAML, TOML.
-- **Rust quality:** cargo-deny (advisories/licenses), cargo-audit, clippy, nextest, optional llvm-cov.
-
----
-
-## Tooling
-
-| Tool | Purpose | Config |
-|------|--------|--------|
-| **devenv** | Nix dev shell: languages (Rust, Bun, TS), packages, env vars, scripts. Enter with `devenv shell`. | `devenv.nix`, `devenv.yaml` |
-| **moon** | Task runner: format, check, lint, build, test, docs, fix, bench, audit, coverage, ci-format. | `moon.yml` |
-| **prek** | Git hooks (no Python). Installs from `.pre-commit-config.yaml` on `devenv shell`. | `.pre-commit-config.yaml` |
-| **treefmt** | Single CLI to format all supported files (only tracked files by default). | `treefmt.toml`, `treefmt.ci.toml` |
-| **rustfmt** | Rust formatter (invoked by treefmt). | `rustfmt.toml` |
-| **cargo-deny** | Rust: advisories, licenses, duplicate deps. Run manually or in CI. | `deny.toml` |
-| **cargo-audit** | Rust security advisories. Used in moon `:audit` and pre-push. | — |
-| **cargo-nextest** | Fast Rust test runner. Used in moon `:test` and `:coverage`. | `nextest.toml` |
-| **sccache** | Shared compilation cache for Rust (and C/C++) across builds. | env `RUSTC_WRAPPER=sccache` |
-| **mold** | Fast linker for Rust on Linux. | — |
-| **commitizen** | Validates commit messages (conventional commits). Prek hook on commit-msg. | — |
-| **Cachix** | Optional Nix binary cache; pull/push configured in `devenv.nix`. | `cachix.pull` / `cachix.push` |
-
-### Treefmt formatters (by file type)
-
-- **Nix:** deadnix, alejandra  
-- **GitHub Actions:** actionlint  
-- **Bash:** beautysh  
-- **JS/TS/JSON:** biome  
-- **YAML:** yamlfmt  
-- **TOML:** taplo  
-- **Rust:** rustfmt (edition 2024)
-
----
-
-## Cachix (with devenv and CI)
-
-[Cachix](https://cachix.org) is a Nix binary cache. It stores build results (e.g. devenv shell closure, Nix packages) so you and CI can **pull** instead of rebuilding. Optionally, CI can **push** new build results to the cache so the next run is fast.
-
-### In devenv.nix
-
-In `devenv.nix` the cache is configured as:
-
-```nix
-cachix = {
-  pull = ["project-template"];
-  push = "project-template";
-};
-```
-
-- **pull** — When you run `devenv shell` or any Nix command, Nix will try to fetch store paths from the `project-template` cache (if you’ve trusted it; see below). No account needed for pull.
-- **push** — When a build runs with push enabled and Cachix auth, new store paths can be uploaded to the `project-template` cache. Pushing is typically done only in CI (e.g. on the main branch).
-
-Replace `project-template` with your own cache name if you create one at [cachix.org](https://cachix.org).
-
-### Local use (pull only)
-
-1. **Trust the cache** so Nix uses it when building the dev shell:
-
-   ```bash
-   cachix use project-template
-   ```
-
-   (Use your cache name if different.) This adds the cache to your Nix config and lets `devenv shell` pull binaries instead of building everything.
-
-2. **Enter the shell as usual:** `devenv shell`. If the closure is already on the cache, it will download instead of build.
-
-You do **not** need a Cachix account or auth for pulling. For pushing (e.g. from CI) you need a Cachix auth token.
-
-### CI pipeline
-
-In GitHub Actions (or similar) you want to:
-
-1. **Use the cache on every run** (pull) so CI benefits from previous builds.
-2. **Push to the cache only on selected events** (e.g. push to `main`), so the cache stays up to date and you avoid push failures on PRs.
-
-Example pattern:
-
-1. **Install Nix** (e.g. `DeterminateSystems/nix-installer-action`).
-2. **Configure Cachix** with [cachix/cachix-action](https://github.com/cachix/cachix-action):
-   - `name`: your cache name (e.g. `project-template`).
-   - **Pull:** always enabled when `name` is set.
-   - **Push:** only when you want to update the cache. Pass the auth token only then and set `skipPush: true` otherwise, so the action doesn’t try to start the push daemon on PRs.
-
-   Example (conceptual):
-
-   ```yaml
-   env:
-     CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
-   steps:
-     - uses: cachix/cachix-action@v16
-       with:
-         name: project-template
-         authToken: ${{ github.ref == 'refs/heads/main' && secrets.CACHIX_AUTH_TOKEN }}
-         skipPush: ${{ github.ref != 'refs/heads/main' }}
-   ```
-
-   So: on `main`, push if the token is set; on PRs or other branches, only pull.
-
-3. **Install devenv** and run your pipeline (e.g. `devenv shell -- moon run :ci-format` and the rest of your checks).
-
-Add the Cachix auth token as a repository secret (`CACHIX_AUTH_TOKEN`) if you want CI to push to your cache. If you only want to pull (e.g. from a public cache), you can omit the token and always use `skipPush: true`.
-
----
-
-## Lifecycle: what happens when
-
-### 1. Clone the repo
+## Start a project from it
 
 ```bash
-git clone <repo-url>
-cd <repo>
+git clone git@github.com:Industrial/_project-template.git my-project
+cd my-project
+git remote set-url origin <new-repo-url>
 ```
 
+Then rename the placeholders: `name` in `devenv.nix`, `id` in `moon.yml`, the
+`app` crate under `crates/`, and the TMPDIR path in `devenv.nix`'s
+`enterShell`. Pick the licence in `Cargo.toml` (`[workspace.package]`).
 
-### 2. Enter the dev shell (first time and daily)
+## Local setup
 
 ```bash
-devenv shell
+direnv allow          # or: devenv shell
 ```
 
-**On enter, devenv runs:**
+The shell provides, all pinned:
 
-1. **prek-install** — Installs git hooks from `.pre-commit-config.yaml` (pre-push, commit-msg) into `.git/hooks`. Overwrites existing hook files so the repo’s config is always in use.
-2. **moon-sync** — Runs `moon sync` so moon’s toolchain and project graph are up to date.
-3. **sccache** — Ensures `$HOME/.cache/sccache` exists so the Rust compiler cache can be used.
+| What | Where it is pinned |
+|------|--------------------|
+| rustc, cargo, clippy, rustfmt, rust-analyzer | `rust-toolchain.toml` (devenv.nix reads it) |
+| blaze | `local.features.program-blaze` (`nix/devenv-modules`) |
+| moon, treefmt and its formatters, cargo-nextest, cargo-llvm-cov, cargo-deny, sccache, mold, lldb | `devenv.lock` |
 
-**You get:**
+From outside the shell, `bin/with-devenv <cmd>` runs one command with the
+shell's toolchain and environment, without entering it.
 
-- Rust (stable), clippy, rustfmt, rust-analyzer, cargo-nextest, cargo-llvm-cov, cargo-audit  
-- Bun + TypeScript  
-- moon, treefmt, and all formatters (alejandra, beautysh, biome, taplo, yamlfmt, etc.)  
-- prek, git, gh, direnv  
-- Env: `RUST_BACKTRACE=1`, `CARGO_TERM_COLOR=always`, `RUSTC_WRAPPER=sccache`, `MOON_TOOLCHAIN_FORCE_GLOBALS=rust`  
-- Scripts: `prek-install`, `moon-sync`, `pre-push` (used by the pre-push hook)
+## Development loop (blaze)
 
-Optional: if you use [direnv](https://direnv.net), `direnv allow` in the repo will enter the devenv shell automatically when you `cd` in.
+[blaze](https://ix.dev/blaze) keeps the workspace compiled in a per-user
+daemon and rebuilds only what changed, so it answers in seconds:
 
-### 3. Develop
+```bash
+blaze check           # or: moon run :dev-check
+blaze test            # or: moon run :dev-test   (BLAZE_TESTS=all re-runs cached tests)
+blaze run --bin app
+blaze status          # what the daemon holds;  blaze stop  ends it
+```
 
-- **Format:** `moon run :format` (writes changes) or `moon run :ci-format` (CI-style; fails if anything would change).
-- **Check / lint / build / test:**  
-  `moon run :check`, `:lint`, `:build`, `:test`  
-  Or run the full gate:  
-  `devenv shell -- pre-push` (same as the pre-push hook).
-- **Fix auto-fixable issues:** `moon run :fix`
-- **Docs:** `moon run :docs` or `:check-docs`
-- **Security:** `moon run :audit`; run `cargo deny check` manually for full deny checks.
-- **Coverage:** `moon run :coverage` (nextest under llvm-cov).
+blaze is for typing by hand. It is not a cargo wrapper — it ships its own
+toolchain and has no clippy, fmt, doc, nextest, llvm-cov or deny — and its
+verdict is its own front end's, so every gate below runs cargo. See the
+comment at the top of `moon.yml` for the measurements behind that split.
 
-All of these use the tools and configs from the dev shell (rustfmt, nextest.toml, etc.).
+## Gates (moon)
 
-### 4. Commit
+| Task | Runs | Pre-commit | Pre-push / CI |
+|------|------|:---:|:---:|
+| `:format` | treefmt (writes) | ✓ | |
+| `:ci-format` | treefmt, fail on change | | ✓ |
+| `:lint` | `cargo fmt --check` + `cargo clippy --all-targets -D warnings` | ✓ | ✓ |
+| `:check` | `cargo check --all-targets` | | |
+| `:build` | `cargo build --all-targets` | | ✓ |
+| `:test` | `cargo nextest run` + doctests | | ✓ |
+| `:docs` | `cargo doc`, rustdoc warnings denied | | ✓ |
+| `:deny` | cargo-deny: advisories, licences, bans, sources | | ✓ |
+| `:coverage` | llvm-cov over nextest, HTML report | | |
+| `:fix`, `:bench` | `cargo fix` + `clippy --fix`; benchmarks | | |
 
-- When you run `git commit`, the **commit-msg** hook (prek + commitizen) runs.
-- It validates that the commit message follows conventional commits (e.g. `feat: add X`, `fix: Y`). If not, the commit is rejected.
+`moon run :lint :test` runs several. The hooks are installed by prek on shell
+entry; commit messages are checked as conventional commits.
 
-### 5. Push
+## Rust conventions baked in
 
-- When you run `git push`, the **pre-push** hook runs.
-- The hook runs: `devenv shell -- pre-push`
-- **pre-push** (defined in `devenv.nix` scripts) runs:  
-  `moon run :format :check :lint :build :test :audit :check-docs`
-- If any of these fail, the push is aborted. So the branch you push has already been formatted, checked, linted, built, tested, audited, and doc-checked in the same way as in CI.
+- **Edition 2024, resolver 3**, MSRV = the pinned toolchain (`rust-version`).
+- **Workspace inheritance**: version, edition, licence and lints come from the
+  root `Cargo.toml`; a new crate under `crates/` is picked up by the glob and
+  needs only `[lints] workspace = true` and `*.workspace = true` fields.
+  Dependency versions go in `[workspace.dependencies]`.
+- **Lints**: `unsafe_code` forbidden; `missing_docs`, clippy `all` + `pedantic`,
+  `unwrap_used`, `dbg_macro`, `todo` warn. Warnings fail the gates, not
+  ordinary builds.
+- **Profiles**: dependencies built at `opt-level = 1` without debug info in
+  dev; release uses thin LTO and one codegen unit.
+- **Tests**: nextest (`.config/nextest.toml`; the `ci` profile retries once,
+  reports flakes, writes JUnit). Unit tests beside the code, integration tests
+  in each crate's `tests/`.
+- **Cargo.lock is committed.**
 
-### 6. CI (when you add it)
+## CI
 
-- In GitHub Actions (or similar), use the same commands inside a Nix/devenv setup so CI matches local and pre-push.
-- **Format check:** `devenv shell -- moon run :ci-format`  
-  Uses `treefmt.ci.toml` (same as treefmt but `fail-on-change = true`).
-- **Full pipeline:** `devenv shell -- moon run :format :check :lint :build :test :audit :check-docs`  
-  Or use `devenv shell -- pre-push` to mirror the pre-push hook exactly.
+| Workflow | When | What |
+|----------|------|------|
+| `ci.yml` | push to main, PRs | `gates` (lint, build, test, docs, deny) and `format` (treefmt with formatters from devenv.lock's nixpkgs); `CI Pass` aggregates them |
+| `audit.yml` | daily, and on dependency changes | `cargo deny check advisories` |
+| `dependabot.yml` | weekly | grouped bumps for Actions (SHA-pinned) and cargo |
 
----
+Every action is pinned by commit SHA; moon is downloaded at a pinned version
+and sha256-checked. In the new repository, require the `CI Pass` check on
+`main` in branch protection.
 
-## Moon tasks quick reference
+## Layout
 
-| Task | What it does |
-|------|----------------|
-| `:format` | treefmt (format tracked files) |
-| `:ci-format` | treefmt with `treefmt.ci.toml` (fail if not formatted) |
-| `:check` | cargo check --workspace --all-features |
-| `:lint` | cargo fmt --check + cargo clippy |
-| `:build` | cargo build |
-| `:test` | cargo nextest run |
-| `:docs` | cargo doc --no-deps --all-features |
-| `:fix` | cargo fix + clippy --fix |
-| `:bench` | cargo bench (no-op if no `benches/`) |
-| `:audit` | cargo audit |
-| `:coverage` | cargo llvm-cov nextest |
-| `:check-docs` | cargo doc + clippy with missing_docs lint |
-
-Run with: `moon run :<task>` or `devenv shell -- moon run :<task>` from outside the shell.
-
----
-
-## Config files
-
-- **devenv.nix** — Dev shell: packages, env, scripts (prek-install, moon-sync, pre-push).
-- **devenv.yaml** — Nix flake inputs (fenix, nixpkgs, rust-overlay, etc.).
-- **moon.yml** — Moon project and task definitions.
-- **treefmt.toml** — Formatters and globs (local format; `walk = "git"`).
-- **treefmt.ci.toml** — Same as above with `fail-on-change = true` for CI.
-- **rustfmt.toml** — Rust format options (edition 2024, 2 spaces).
-- **deny.toml** — cargo-deny: advisories, licenses, bans.
-- **nextest.toml** — nextest profiles (default + ci), timeouts, cache.
-- **.pre-commit-config.yaml** — prek: pre-push (devenv pre-push script), commit-msg (commitizen).
-
----
-
-## Summary flow
-
-1. **Clone** (with submodules) → **devenv shell** → prek installs hooks, moon syncs, sccache ready.  
-2. **Develop** with moon tasks (`:format`, `:check`, `:lint`, `:build`, `:test`, etc.).  
-3. **Commit** → commitizen checks message.  
-4. **Push** → pre-push runs full moon pipeline; push only if it passes.  
-5. **CI** (when added) runs the same commands (e.g. `:ci-format` and the same full pipeline) inside devenv so results match local and pre-push.
+```
+crates/app/            placeholder crate: lib.rs, main.rs, tests/
+rust-toolchain.toml    the Rust pin
+Cargo.toml             workspace, shared metadata, lints, profiles
+.config/nextest.toml   test runner profiles
+deny.toml              dependency policy
+moon.yml               tasks
+treefmt.toml           formatters (treefmt.ci.toml: same, fail on change)
+devenv.nix/.yaml/.lock dev shell; shared modules vendored in nix/devenv-modules
+.github/               CI, audit, dependabot
+.maestro/              Maestro harness scaffold
+```

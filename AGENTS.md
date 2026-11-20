@@ -6,57 +6,63 @@ feature boundaries.
 
 ## Build / test / verify
 
-Run these through Moon, from inside the devenv shell:
+From outside the dev shell, prefix any command with `bin/with-devenv` (it runs
+the command with the shell's toolchain and env, without entering the shell).
 
 ```bash
-moon run :check          # blaze check  — the fast inner-loop verdict
-moon run :build          # blaze build
-moon run :test           # blaze test   (unit, integration, doctests)
-moon run :lint           # cargo fmt --check && cargo clippy -D warnings
-moon run :format         # treefmt (Rust, Nix, shell, JS/TS, YAML, TOML)
-moon run :cargo-check    # cargo check  — rustc's verdict, runs in the push gate
-moon run :cargo-test     # cargo nextest run — likewise
-moon run :audit :coverage :docs :check-docs
+blaze check              # inner loop: the daemon's verdict in seconds
+blaze test               # inner loop: unit, integration, doctests
+moon run :lint           # cargo fmt --check && cargo clippy --all-targets -D warnings
+moon run :test           # cargo nextest run && cargo test --doc
+moon run :build :docs :deny
+moon run :format         # treefmt (Rust, Nix, shell, JS/TS, YAML, TOML, Actions)
 ```
 
-### Rust goes through blaze
+The pre-push hook runs `:ci-format :lint :build :test :docs :deny`, and CI
+(`.github/workflows/ci.yml`) runs the same targets. If they pass locally they
+pass in CI; do not skip the hook to save time.
 
-[blaze](https://ix.dev/blaze) is the default Rust build command here, pinned by
-`local.features.program-blaze` in `devenv.nix`. It keeps the workspace
-compiled in a per-user daemon and rebuilds only what changed, so `build`,
-`check`, `run` and `test` are roughly an order of magnitude faster than cargo on
-an incremental edit. Use `blaze` wherever you would have typed `cargo`, for
-those four commands.
+### blaze is the inner loop, cargo is the gate
 
-Two things to know before reaching for it:
+[blaze](https://ix.dev/blaze), pinned by `local.features.program-blaze`, keeps
+the workspace compiled in a per-user daemon. Use it for `build`, `check`,
+`run` and `test` while iterating. Every gate runs cargo instead:
 
 - **blaze is not a cargo wrapper.** It ships its own toolchain and never runs
-  rustc, cargo, clippy or rustfmt. It has no `clippy`, `fmt`, `audit`,
-  `nextest`, `llvm-cov`, `add` or `update` subcommand — an unknown subcommand
-  exits 101 rather than falling back. `blaze doc` panics as of 0.20261030.1.
-  Everything in that list stays cargo's, which is why the toolchain is still
-  installed.
-- **rustc is still the final word.** blaze's verdict is its own front end's and
-  not yet all of rustc's, so the pre-push gate runs `:cargo-check` and
-  `:cargo-test` as well. Do not drop them to make a push faster.
+  rustc, cargo, clippy or rustfmt. It has no `clippy`, `fmt`, `doc` (panics as
+  of 0.20261030.1), `nextest`, `llvm-cov`, `deny`, `add` or `update`; an
+  unknown subcommand exits 101 rather than falling back.
+- **rustc is the final word.** blaze's verdict is its own front end's.
+- **It is memory-hungry as a gate**: a worker per (crate, flag-set). See the
+  top of `moon.yml` for the measurements.
 
-`blaze test` reports a cached pass for a test whose inputs have not changed
-(`Cached N tests from an earlier run`); `BLAZE_TESTS=all blaze test` forces every
-test to run.
+`blaze test` reports a cached pass for unchanged inputs; `BLAZE_TESTS=all blaze
+test` forces every test to run. `blaze status` / `blaze stop` / `blaze-doctor`
+inspect the daemon. Do not add `[workspace.metadata.blaze] version` to
+`Cargo.toml` — blaze would download and run that release instead of the
+Nix-pinned one.
 
-`blaze status` shows the daemon and what it holds; `blaze stop` ends it;
-`blaze-doctor` prints version, daemon and cache paths. Do not add
-`[workspace.metadata.blaze] version` to `Cargo.toml` — blaze would download that
-release itself and run it instead of the Nix-pinned one.
+### Pins
+
+- Rust: `rust-toolchain.toml` only. `devenv.nix` reads its `channel`; CI's
+  `rustup toolchain install` reads the file. Bump `rust-version` in
+  `Cargo.toml` with it. A version newer than devenv.lock's rust-overlay knows
+  needs `bin/with-devenv devenv update rust-overlay`.
+- moon: the dev shell's version, and `MOON_VERSION`/`MOON_SHA256` in `ci.yml`
+  — keep them equal.
+- Actions: by commit SHA with a `# vX.Y.Z` comment (Dependabot bumps both).
 
 ## Layout
 
-- `src/` — application source
-- `tests/` — automated tests
+- `crates/<name>/` — workspace members (glob); each has `[lints] workspace = true`
+  and inherits `version`/`edition`/`rust-version`/`license` from the root.
+- `crates/<name>/tests/` — integration tests; unit tests sit beside the code.
 - `.maestro/` — harness state (read `.maestro/AGENTS.md` first)
 
 ## Conventions
 
+- Dependency versions live in root `[workspace.dependencies]`; crates use `foo.workspace = true`.
+- Fix lints rather than `#[allow]` them; an allow carries a comment saying why.
 - Match existing code style; use established libraries before adding new ones.
 - Surgical edits only — touch what the task requires.
 - Bump the relevant version when behavior changes.
