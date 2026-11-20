@@ -2,53 +2,43 @@
   inputs,
   pkgs,
   ...
-}: {
+}: let
+  # rust-toolchain.toml is the one Rust pin: rustup reads it in CI, and the
+  # shell takes its `channel` here, so both compile with the same rustc.
+  rustToolchain = (builtins.fromTOML (builtins.readFile ./rust-toolchain.toml)).toolchain;
+in {
   imports = [./nix/devenv-modules];
 
   name = "project-template";
 
   # Shared modules from `nix/devenv-modules` — defaults are off; enable what this repo needs.
-  # blaze is the default Rust build/check/run/test command (moon.yml drives it).
-  # It ships its own toolchain, so languages-rust and packages-rust-dev stay on:
-  # rust-analyzer, clippy, rustfmt and the cargo-* helpers are still cargo's.
-  local.features.program-blaze.enable = true;
-  local.features.program-moon.enable = true;
   local.features.dotenv.enable = true;
   local.features.packages-base.enable = true;
-  local.features.packages-rust-dev.enable = true;
   local.features.packages-formatters.enable = true;
-  local.features.env-python-ld.enable = true;
   local.features.languages-javascript.enable = true;
-
-  # Agent harness — the `.cursor` toolchain that `.claude` agents/skills and
-  # `.mcp.json` expect on PATH (mirrors idclear/monorepo). Paperclip stays
-  # monorepo-only: it needs its own Postgres and process supervision.
+  local.features.program-moon.enable = true;
   local.features.program-assay.enable = true;
 
+  # Rust: rustc/cargo/clippy/rustfmt/rust-analyzer at the rust-toolchain.toml
+  # pin, plus nextest, llvm-cov, sccache, mold and lldb.
   local.features.languages-rust = {
     enable = true;
     channel = "stable";
+    version = rustToolchain.channel;
   };
+  local.features.packages-rust-dev.enable = true;
 
-  # uv venv at `.devenv/state/venv` — Serena MCP (`scripts/serena-mcp-wrapper.sh`);
-  # see pyproject.toml [dependency-groups].
-  local.features.languages-python-uv = {
-    enable = true;
-    syncArguments = [
-      "--no-install-project"
-      "--group"
-      "serena"
-    ];
-  };
+  # blaze — the by-hand inner loop (`blaze check`, `blaze test`, `blaze run`).
+  # It ships its own toolchain and keeps the workspace compiled in a per-user
+  # daemon; the gates below stay cargo's (see moon.yml for why).
+  local.features.program-blaze.enable = true;
 
   local.features.git-hooks-moon = {
     enable = true;
-    # Preserve this repo's Moon gate composition (not the shared ci-* defaults).
-    # :check / :build / :test are blaze's. blaze's verdict is its own front
-    # end's and not yet all of rustc's, so the push gate adds :cargo-check and
-    # :cargo-test — rustc is still the last word before anything leaves here.
-    preCommitTargets = ":format :check :lint :test";
-    prePushTargets = ":format :check :lint :build :test :cargo-check :cargo-test :audit :check-docs";
+    # Commit: formatted and lint-clean. Push: everything CI runs — ci.yml's
+    # `gates` and `format` jobs run these same moon targets.
+    preCommitTargets = ":format :lint";
+    prePushTargets = ":ci-format :lint :build :test :docs :deny";
   };
   local.features.git-hooks-prek.enable = true;
 
@@ -58,8 +48,8 @@
     RUSTC_WRAPPER = "sccache";
   };
 
-  # Project-only packages (beads removed upstream in favor of Maestro).
   packages = [
+    pkgs.cargo-deny
     inputs.definitively.packages.${pkgs.stdenv.hostPlatform.system}.definitively
   ];
 
@@ -76,16 +66,5 @@
     # generated code in a temporary directory.
     export TMPDIR="$HOME/.cache/_project-template/tmp"
     mkdir -p "$TMPDIR"
-    # Hermes: project-local home + seed templates (never overwrite secrets).
-    export HERMES_HOME="$PWD/.hermes"
-    mkdir -p "$HERMES_HOME"
-    for _f in config.yaml SOUL.md; do
-      if [ ! -f "$HERMES_HOME/$_f" ] && [ -f "nix/devenv-modules/features/hermes-agent/templates/$_f" ]; then
-        cp "nix/devenv-modules/features/hermes-agent/templates/$_f" "$HERMES_HOME/$_f"
-      fi
-    done
-    if [ ! -f "$HERMES_HOME/.env" ] && [ -f nix/devenv-modules/features/hermes-agent/templates/.env.example ]; then
-      cp nix/devenv-modules/features/hermes-agent/templates/.env.example "$HERMES_HOME/.env"
-    fi
   '';
 }
