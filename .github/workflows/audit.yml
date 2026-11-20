@@ -1,0 +1,33 @@
+name: Security audit
+# New RustSec advisories land against an unchanged Cargo.lock, so the CI run of
+# the last commit says nothing about today. This re-checks daily, and on any
+# change to the dependency graph or the deny policy.
+on:
+  push:
+    branches: [main]
+    paths: [Cargo.lock, '**/Cargo.toml', deny.toml]
+  pull_request:
+    branches: [main]
+    paths: [Cargo.lock, '**/Cargo.toml', deny.toml]
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  advisories:
+    name: cargo deny check advisories
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Rust (rust-toolchain.toml)
+        run: rustup toolchain install
+      - name: Install cargo-deny
+        uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2.90.3
+        with:
+          tool: cargo-deny
+      - name: cargo deny check advisories
+        run: cargo deny --all-features check advisories

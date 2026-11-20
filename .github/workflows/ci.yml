@@ -1,0 +1,134 @@
+name: CI
+# The same moon targets the pre-push hook runs (devenv.nix `prePushTargets`),
+# split into two jobs by where their tools come from:
+#
+#   gates   — cargo: rustup installs rust-toolchain.toml's pin, so CI and the
+#             dev shell compile with the same rustc.
+#   format  — treefmt: its formatters come from nixpkgs, at the exact nixpkgs
+#             revision devenv.lock pins, so CI and the dev shell format alike.
+#
+# `CI Pass` is the one status check to require in branch protection.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  NEXTEST_NO_TESTS: pass
+  NEXTEST_PROFILE: ci
+  # moon would otherwise try to install a Rust of its own via proto.
+  MOON_TOOLCHAIN_FORCE_GLOBALS: rust
+  # Pinned release, sha256-checked (no `curl | bash`). Keep equal to the moon
+  # the dev shell provides (`moon --version`).
+  MOON_VERSION: 2.5.0
+  MOON_SHA256: c5dc6d9665d10ea8233739df5c63232e23acd8f1b3fb897849b71f93e5e97d3b
+# Least privilege: every job reads the repository only.
+permissions:
+  contents: read
+jobs:
+  gates:
+    name: Lint, build, test, docs, deny
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # Line tables keep backtraces and shrink target/ several-fold.
+      CARGO_PROFILE_DEV_DEBUG: line-tables-only
+      CARGO_PROFILE_TEST_DEBUG: line-tables-only
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # moon resolves `main` as a base revision on pull requests; a shallow
+          # single-branch checkout has no such ref and moon exits 128.
+          fetch-depth: 0
+          persist-credentials: false
+      # With no argument, rustup installs what rust-toolchain.toml names,
+      # components included — the single Rust pin.
+      - name: Install Rust (rust-toolchain.toml)
+        run: |
+          rustup toolchain install
+          rustc --version
+      - name: Cache
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - name: Install cargo-nextest and cargo-deny
+        uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2.90.3
+        with:
+          tool: cargo-nextest,cargo-deny
+      - name: Install moon (pinned release, sha256-checked)
+        run: |
+          set -euo pipefail
+          archive=moon_cli-x86_64-unknown-linux-gnu.tar.xz
+          curl -fsSLo "$RUNNER_TEMP/$archive" \
+            "https://github.com/moonrepo/moon/releases/download/v${MOON_VERSION}/$archive"
+          echo "${MOON_SHA256}  $RUNNER_TEMP/$archive" | sha256sum -c -
+          mkdir -p "$HOME/.moon/bin"
+          tar -xJf "$RUNNER_TEMP/$archive" -C "$HOME/.moon/bin" --strip-components=1 \
+            moon_cli-x86_64-unknown-linux-gnu/moon moon_cli-x86_64-unknown-linux-gnu/moonx
+          echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
+      - name: 'moon run :lint'
+        run: moon run :lint
+      - name: 'moon run :build'
+        run: moon run :build
+      - name: 'moon run :test'
+        run: moon run :test
+      - name: 'moon run :docs'
+        run: moon run :docs
+      - name: 'moon run :deny'
+        run: moon run :deny
+      - name: Keep the JUnit report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: junit
+          path: target/nextest/ci/junit.xml
+          if-no-files-found: ignore
+          retention-days: 7
+  format:
+    name: treefmt
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Nix
+        uses: cachix/install-nix-action@75c75c31ebece974e48ebc36b4ad125bd97bd97b # v31.11.3
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+      - name: Install the formatters at devenv.lock's nixpkgs revision
+        run: |
+          set -euo pipefail
+          read -r owner repo rev < <(jq -r '.nodes.nixpkgs.locked | "\(.owner) \(.repo) \(.rev)"' devenv.lock)
+          src="github:$owner/$repo/$rev"
+          echo "formatters from $src"
+          nix profile install \
+            "$src#treefmt" "$src#alejandra" "$src#deadnix" "$src#actionlint" \
+            "$src#beautysh" "$src#biome" "$src#yamlfmt" "$src#taplo"
+      - name: Install Rust (rustfmt is a treefmt formatter)
+        run: rustup toolchain install
+      # Exactly what moon's `:ci-format` runs; `fail-on-change = true` and
+      # `walk = "git"` live in treefmt.ci.toml rather than as flags here.
+      - name: treefmt (moon :ci-format)
+        run: treefmt --config-file treefmt.ci.toml
+  ci-pass:
+    name: CI Pass
+    runs-on: ubuntu-latest
+    needs: [gates, format]
+    if: always()
+    steps:
+      - name: Every required job passed
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          failed=$(jq -r 'to_entries[] | select(.value.result != "success") | .key' <<<"$RESULTS")
+          if [ -n "$failed" ]; then
+            echo "::error::failed: $failed"
+            exit 1
+          fi
+          echo "all required jobs passed"
