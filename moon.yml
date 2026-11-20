@@ -9,6 +9,17 @@ workspace:
       - check
       - test
 tasks:
+  # Moon runs cargo; blaze is the by-hand development loop.
+  #
+  # These were `blaze … --workspace` with `cache: false`. blaze keeps the
+  # workspace compiled in a daemon that holds a worker per (crate, flag-set) —
+  # found at 15 workers on 23.3 GB in one session — which is worth paying for
+  # an inner loop a human drives in seconds, and not for a gate that wants one
+  # answer and exits. Measured in the redox repo, full push gate:
+  #   cold   203s / 22.6 GB peak (blaze)  ->  24s / 0.4 GB (cargo)
+  #   no-op  a whole workspace rebuild    ->  0.6s, nearly all cached
+  # Type `blaze check` / `blaze test` by hand while developing; moon runs
+  # cargo. See the redox repo's AGENTS.md for the full writeup.
   format:
     description: 'Format the workspace with treefmt (Rust, Nix, shell, JS/TS, YAML, TOML)'
     command: 'treefmt'
@@ -67,26 +78,26 @@ tasks:
   # blaze targets — blaze has its own content-addressed store and is already
   # faster than a moon cache lookup, and double-caching only hides staleness.
   build:
-    description: 'Build the workspace with blaze'
-    command: 'blaze'
+    description: 'Build the workspace (cargo)'
+    command: 'cargo'
     args: ['build', '--workspace']
     inputs:
       - 'Cargo.toml'
       - 'Cargo.lock'
       - 'crates/**/*.rs'
     options:
-      cache: false
+      cache: true
       outputStyle: buffer-only-failure
   check:
-    description: 'Check the workspace compiles (blaze)'
-    command: 'blaze'
-    args: ['check', '--workspace', '--all-features']
+    description: 'Check the workspace compiles (cargo)'
+    command: 'cargo'
+    args: ['check', '--workspace', '--all-features', '--all-targets']
     inputs:
       - 'Cargo.toml'
       - 'Cargo.lock'
       - 'crates/**/*.rs'
     options:
-      cache: false
+      cache: true
       outputStyle: buffer-only-failure
   cargo-build:
     description: 'Build the workspace with cargo (rustc verification path)'
@@ -121,16 +132,18 @@ tasks:
     options:
       outputStyle: buffer-only-failure
   test:
-    description: 'Run tests with blaze (unit, integration and doctests)'
-    command: 'blaze'
-    args: ['test', '--workspace']
+    description: 'Run tests (nextest, then the doctests)'
+    command: 'bash'
+    args:
+      - '-c'
+      - 'cargo nextest run --workspace --all-features && cargo test --doc --workspace --all-features'
     inputs:
       - 'Cargo.toml'
       - 'Cargo.lock'
       - '**/*.rs'
       - 'tests/**/*'
     options:
-      cache: false
+      cache: true
       outputStyle: buffer-only-failure
   cargo-test:
     description: 'Run tests with nextest under rustc — the verification path'
