@@ -1,9 +1,54 @@
 [workspace]
-resolver = "2"
-members = ["crates/app"]
+resolver = "3"
+members = ["crates/*"]
+# Scratch space; a throwaway crate there must not join the workspace.
+exclude = [".tmp", "tmp"]
 
-# Single version and shared metadata for all workspace crates (inherit with version.workspace = true).
+# Shared metadata: each crate inherits with `<field>.workspace = true`, so a
+# new crate's manifest stays a few lines.
 [workspace.package]
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
+# Keep equal to rust-toolchain.toml's `channel`.
+rust-version = "1.100"
 license = "CC-BY-SA-4.0"
+publish = false
+
+# Every third-party and intra-workspace dependency is versioned once, here;
+# crates take it with `foo.workspace = true`.
+[workspace.dependencies]
+# serde = { version = "1", features = ["derive"] }
+
+# Lints every crate opts into with `[lints] workspace = true`. Warnings are
+# errors in the gates (`clippy -- -D warnings`, `RUSTDOCFLAGS=-D warnings`),
+# not in RUSTFLAGS, so an ordinary build never fails on one and the build
+# cache is not split by flags.
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"
+unreachable_pub = "warn"
+unused_qualifications = "warn"
+rust_2018_idioms = { level = "warn", priority = -1 }
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+dbg_macro = "warn"
+todo = "warn"
+unimplemented = "warn"
+unwrap_used = "warn"
+
+[workspace.lints.rustdoc]
+broken_intra_doc_links = "warn"
+
+# Dependencies change rarely and are rebuilt rarely: optimise them a little and
+# drop their debug info, which keeps debug builds fast to run and target/ small
+# without costing the workspace's own debuggability.
+[profile.dev.package."*"]
+opt-level = 1
+debug = false
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "debuginfo"

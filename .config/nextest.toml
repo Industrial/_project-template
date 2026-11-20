@@ -1,0 +1,24 @@
+# cargo-nextest configuration — https://nexte.st/docs/configuration/
+# nextest reads this path (.config/nextest.toml) and no other by default.
+
+[profile.default]
+# A local failure should be seen, not retried away.
+retries = 0
+fail-fast = true
+# Flag a test after 10 s; kill it after 6 periods (60 s).
+slow-timeout = { period = "10s", terminate-after = 6 }
+status-level = "fail"
+final-status-level = "slow"
+failure-output = "immediate-final"
+
+# `cargo nextest run --profile ci`, which the CI job sets via NEXTEST_PROFILE.
+[profile.ci]
+# One retry, reported as FLAKY rather than hidden: a flake still shows up in
+# the output and the JUnit report.
+retries = 1
+fail-fast = false
+slow-timeout = { period = "30s", terminate-after = 4 }
+failure-output = "immediate-final"
+
+[profile.ci.junit]
+path = "junit.xml"

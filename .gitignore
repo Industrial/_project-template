@@ -11,7 +11,6 @@
 *.swo
 *.swp
 .DS_Store
-.cargo/
 .devenv*
 .devenv*
 .direnv
@@ -53,7 +52,6 @@
 /tmp/
 /data/
 /target/
-Cargo.lock
 Thumbs.db
 charts/
 config.json
@@ -68,3 +66,5 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+!.cargo/config.toml
+/junit.xml

@@ -1,0 +1,8 @@
+# The one Rust pin. rustup reads it (CI, and anyone outside the dev shell);
+# devenv.nix reads `channel` from it for `languages.rust`, so the shell and CI
+# compile with the same rustc. Bump it here and nowhere else — and bump
+# `rust-version` in Cargo.toml with it, which is the MSRV the pin promises.
+[toolchain]
+channel = "1.100.0"
+components = ["clippy", "rustfmt", "rust-src", "llvm-tools"]
+profile = "minimal"
